@@ -1,0 +1,6 @@
+[submodule "3dgs-render-blender-addon"]
+	path = 3dgs-render-blender-addon
+	url = https://github.com/Kiri-Innovation/3dgs-render-blender-addon.git
+[submodule "idol-sdk"]
+	path = idol-sdk
+	url = https://github.com/speridlabs/idol-sdk.git

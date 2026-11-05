@@ -1,0 +1,106 @@
+# =============================================================================
+# Isabella Desktop — Git Ignore Configuration
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Heavy Neural Models, Weights & Point Clouds (Strictly Excluded)
+# -----------------------------------------------------------------------------
+*.ply
+*.gguf
+*.safetensors
+*.onnx
+*.bin
+*.pt
+*.pth
+*.ckpt
+*.h5
+
+# Model directories and caches
+assets/models/**/*.ply
+assets/models/**/*.gguf
+assets/models/**/*.safetensors
+assets/voices/**/*.onnx
+assets/voices/**/*.bin
+assets/models/**/.cache/
+assets/voices/**/.cache/
+.cache/
+
+# -----------------------------------------------------------------------------
+# Compiled Binaries, Toolchains & Rust Build Artifacts
+# -----------------------------------------------------------------------------
+# Llama.cpp binary distribution (auto-downloaded via scripts/setup_llamacpp.py)
+tools/llama-cpp/*.dll
+tools/llama-cpp/*.exe
+tools/llama-cpp/*.zip
+tools/llama-cpp/LICENSE*
+
+# Rust target directories
+target/
+**/target/
+
+# Windows executables and libraries
+*.exe
+*.dll
+*.so
+*.dylib
+*.pdb
+*.lib
+*.exp
+*.ilk
+
+# -----------------------------------------------------------------------------
+# Python Artifacts & Virtual Environments
+# -----------------------------------------------------------------------------
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+**/.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# -----------------------------------------------------------------------------
+# Logs & Scraped Session Data
+# -----------------------------------------------------------------------------
+logs/*
+!logs/.gitkeep
+
+# -----------------------------------------------------------------------------
+# Audio Test Outputs
+# -----------------------------------------------------------------------------
+assets/audio/**/*.wav
+assets/audio/**/*.mp3
+*.wav
+*.mp3
+
+# -----------------------------------------------------------------------------
+# Local Development Backups & Scratch
+# -----------------------------------------------------------------------------
+backups/
+*.bak*
+scratch/
+
+# -----------------------------------------------------------------------------
+# Transient Offscreen Test Renders (Preserve canonical docs)
+# -----------------------------------------------------------------------------
+assets/renders/*
+!assets/renders/test_emotions/
+!assets/renders/test_emotions/**
+!assets/renders/test_expressions/
+!assets/renders/test_expressions/**
+!assets/renders/README.md
+
+# -----------------------------------------------------------------------------
+# OS & IDE Caches
+# -----------------------------------------------------------------------------
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
