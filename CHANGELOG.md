@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## [2026-11-05 16:44:00] - Atualização de URL do Repositório Remoto GitHub
+- **Arquivos Modificados**:
+  - `D:\isabella-desktop\README.md` (Backup: `backups\root\README.md.bak_20261105_164400`)
+  - `D:\isabella-desktop\CHANGELOG.md` (Backup: `backups\changelogs\CHANGELOG.md.bak_20261105_164430`)
+- **Modificações**:
+  - `README.md`: Atualizado link de clonagem de `https://github.com/usuario/isabella-desktop.git` para `https://github.com/floodnet666/isabella-desktop.git`.
+  - Preparação para criação e push autônomo via GitHub CLI (`gh`).
+
 ## [2026-11-05 16:08:00] - Organização Estrutural de Backups/Changelogs e Inicialização do Repositório Git para Desenvolvedores
 - **Arquivos Modificados**:
   - `D:\isabella-desktop\CHANGELOG.md` (Backup: `backups\changelogs\CHANGELOG.md.bak_20261105_160800`)

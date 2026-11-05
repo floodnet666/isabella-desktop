@@ -80,7 +80,7 @@ O **Isabella Desktop** é uma assistente interativa executada inteiramente no ha
 
 ### 1. Clonar o Repositório (com Submódulos)
 ```powershell
-git clone --recurse-submodules https://github.com/usuario/isabella-desktop.git
+git clone --recurse-submodules https://github.com/floodnet666/isabella-desktop.git
 cd isabella-desktop
 ```
 
