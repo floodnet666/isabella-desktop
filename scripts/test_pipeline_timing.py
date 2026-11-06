@@ -49,7 +49,7 @@ def main():
     prompt = VoiceClonePrompt.load(prompt_path, map_location="cuda:0")
     cfg_fast = OmniVoiceGenerationConfig(num_step=16)
 
-    test_input = "Oi Isabella, você está me ouvindo bem? Como foi seu dia?"
+    test_input = "Tudo bem, me fala um pouquinho sobre o existencialismo."
     print(f"\n>> [2/3] Simulando término de fala do usuário: \"{test_input}\"")
     
     t0_start = time.time()
@@ -72,7 +72,7 @@ def main():
             "repeat_penalty": 1.25,
             "presence_penalty": 0.40,
             "frequency_penalty": 0.40,
-            "max_tokens": 90,
+            "max_tokens": 220,
             "logit_bias": REFUSAL_LOGIT_BIAS,
             "stream": True,
         }

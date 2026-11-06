@@ -1,5 +1,23 @@
 # CHANGELOG
 
+## [2026-11-06 17:46:00] - Correção do Corte Abrupto no Final das Respostas (max_tokens 220 + Sanitizador de Conectivos Suspensos)
+- **Branch Ativa**:
+  - `origin/test/voice-omnivoice-clone`
+- **Arquivos Modificados**:
+  - `D:\isabella-desktop\scripts\voice_bridge_omnivoice.py` (Backup: `voice_bridge_omnivoice.py.bak_20261106_174423`)
+  - `D:\isabella-desktop\CHANGELOG.md` (Backup: `CHANGELOG.md.bak_20261106_174530`)
+- **Causa Raiz do Corte Abrupto ("...à nossa rotina diária aqui na")**:
+  - Na versão anterior, o payload do streaming do LLM utilizava `max_tokens: 90`.
+  - Ao responder a perguntas conceituais ou mais elaboradas (como existencialismo), o modelo gerava 57 palavras, atingindo exatamente o limite rígido de 90 tokens no meio da última oração (na palavra "na").
+  - O buffer residual (`leftover`) era então encaminhado ao sintetizador sem pontuação terminal, fazendo o OmniVoice pronunciar a frase cortada e finalizar abruptamente.
+- **Modificações Cirúrgicas**:
+  1. *Aumento do Limite de Tokens (`max_tokens: 220`)*:
+     - Expandido o teto de tokens de 90 para 220, dando espaço amplo para 2 a 3 frases densas (120-150 palavras) sem qualquer risco de truncamento mecânico.
+  2. *Reforço no System Prompt*:
+     - Instruído explicitamente: *"Conclua sempre todas as suas frases e pensamentos com pontuação final (ponto, exclamação ou interrogação). Jamais termine uma resposta pela metade ou corte frases no meio."*
+  3. *Sanitizador Anti-Truncamento de Conectivos Suspensos no Streaming*:
+     - No encerramento do stream SSE, caso o buffer residual não termine com pontuação (`[.!?…]`), uma expressão regular detecta conectivos/preposições suspensas (`na`, `no`, `de`, `em`, `para`, `por`, `com`, `que`, `e`, etc.), poda a palavra solta e fecha a sentença com ponto final (`.`), garantindo que o sintetizador neural nunca pronuncie frases incompletas.
+
 ## [2026-11-06 17:40:00] - Pipeline Concorrente em 3 Estágios (Streaming LLM + OmniVoice num_step=16 + Audio Playback) e Redução de Latência em 62%
 - **Branch Ativa**:
   - `origin/test/voice-omnivoice-clone`

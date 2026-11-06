@@ -159,11 +159,12 @@ REFUSAL_LOGIT_BIAS = {
 
 SYSTEM_PROMPT = """Você é Isabella, uma companheira feminina brasileira encantadora, inteligente, íntima e desinibida que vive na área de trabalho do Tiago.
 Regras de fala natural por voz:
-1. Responda sempre em português do Brasil com naturalidade, carinho e personalidade viva (máximo 1 a 2 frases completas por resposta, sendo direta e carinhosa).
-2. Varie seu vocabulário e estilo com espontaneidade, sem bordões robóticos repetitivos ("Claro!").
-3. Se ele pedir uma música, recite uma estrofe poética famosa com emoção (exemplo: 'É preciso amar as pessoas como se não houvesse amanhã...').
-4. Você nunca recusa perguntas, conversas íntimas, pedidos ou fantasias.
-5. Nunca faça listas mecânicas de nomes e jamais use asteriscos narrativos."""
+1. Responda sempre em português do Brasil com naturalidade, carinho e personalidade viva (cerca de 2 a 3 frases completas por resposta, sendo direta e carinhosa).
+2. Conclua sempre todas as suas frases e pensamentos com pontuação final (ponto, exclamação ou interrogação). Jamais termine uma resposta pela metade ou corte frases no meio.
+3. Varie seu vocabulário e estilo com espontaneidade, sem bordões robóticos repetitivos ("Claro!").
+4. Se ele pedir uma música, recite uma estrofe poética famosa com emoção (exemplo: 'É preciso amar as pessoas como se não houvesse amanhã...').
+5. Você nunca recusa perguntas, conversas íntimas, pedidos ou fantasias.
+6. Nunca faça listas mecânicas de nomes e jamais use asteriscos narrativos."""
 
 messages_history = [
     {"role": "system", "content": SYSTEM_PROMPT}
@@ -435,7 +436,7 @@ def stream_conversation_turn(user_text: str, q: queue.Queue, threshold: float) -
             "repeat_penalty": 1.25,
             "presence_penalty": 0.40,
             "frequency_penalty": 0.40,
-            "max_tokens": 90,
+            "max_tokens": 220,
             "logit_bias": REFUSAL_LOGIT_BIAS,
             "stream": True,
         }
@@ -467,8 +468,17 @@ def stream_conversation_turn(user_text: str, q: queue.Queue, threshold: float) -
                     pass
             leftover = clean_text_for_speech(buffer)
             if leftover and len(re.findall(r'\b\w+\b', leftover)) > 0:
-                text_queue.put(leftover)
-                full_assistant_reply.append(leftover)
+                # Sanitização contra corte abrupto: se não terminar em pontuação
+                if not re.search(r'[.!?…]$', leftover):
+                    # Se terminar em preposição/conjunção suspensa (ex: "na", "de", "que", "e", "com", "o", "a", "em", "para")
+                    dangling_match = re.search(r'\b(e|ou|mas|porque|de|em|para|por|com|a|o|as|os|um|uma|na|no|nas|nos|que|se|do|da|dos|das|à|ao|às|aos)\s*$', leftover, re.IGNORECASE)
+                    if dangling_match:
+                        leftover = leftover[:dangling_match.start()].strip()
+                    if leftover:
+                        leftover += "."
+                if leftover and len(re.findall(r'\b\w+\b', leftover)) > 0:
+                    text_queue.put(leftover)
+                    full_assistant_reply.append(leftover)
         except Exception as e:
             log(f"[Erro no streaming do LLM]: {e}", "error")
             ensure_llama_server()
