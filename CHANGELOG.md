@@ -1,5 +1,25 @@
 # CHANGELOG
 
+## [2026-11-06 17:23:00] - Migração para LFM3-Audio-2B-Q4_K_M (1.39 GB) na Branch de Testes, Eliminando Definitivamente o Estouro de VRAM
+- **Branch Ativa**:
+  - `origin/test/voice-omnivoice-clone`
+- **Arquivos Modificados**:
+  - `D:\isabella-desktop\start_isabella_omnivoice.ps1` (Backup: `start_isabella_omnivoice.ps1.bak_20261106_172230`)
+  - `D:\isabella-desktop\scripts\voice_bridge_omnivoice.py` (Backup: `voice_bridge_omnivoice.py.bak_20261106_172230`)
+- **Diagnóstico da Causa Raiz do Read Timeout no ASR**:
+  - O modelo não-quantizado `LFM3-Omni-2B-F16.gguf` (3.47 GB) somado ao projetor `mmproj-F16` (0.95 GB) e contextos consumia **6.10 GB de VRAM** sozinho.
+  - Ao carregar o `OmniVoice` (1.8 GB), o Windows realizava swap de memória para a RAM via PCIe. Ao enviar áudio para o Conformer, a alocação de scratchpad CUDA travava o processo por mais de 30 segundos ou derrubava o `llama-server`.
+- **Modificações Cirúrgicas**:
+  - Configurado o `llama-server` para utilizar `E:\modelos_ollama\LFM3-Audio-2B-Q4_K_M.gguf` (1.09 GB) com `mmproj-LFM3-Audio-2B-Q8_0.gguf` (0.30 GB) (com fallback transparente para F16 caso ausente).
+  - O consumo de VRAM do `llama-server` caiu drasticamente de **6.10 GB para 1.96 GB** (medido via `nvidia-smi`).
+  - VRAM total combinada (`llama-server` 1.96 GB + `OmniVoice` 1.80 GB) = **3.76 GB**, deixando mais de **2.3 GB de margem livre** na RTX 3060.
+- **Validação Empírica**:
+  - Inferência do LLM acelerada de 4.3s para **464 milissegundos** (46 palavras).
+  - Conformer Causal ASR executado em **552 milissegundos**.
+  - Síntese da Frase 1 pelo OmniVoice concluída em **2.86 segundos**.
+  - Código de saída 0 no teste de integração end-to-end (`task-1830`).
+
+
 ## [2026-11-06 16:14:00] - Correção do Acúmulo de Fila de Microfone (Flush Queue) e Hard Cap de Áudio VAD (8.0s)
 - **Branch Ativa**:
   - `origin/test/voice-omnivoice-clone`

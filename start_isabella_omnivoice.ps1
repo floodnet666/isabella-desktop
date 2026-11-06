@@ -26,11 +26,12 @@ $ServerProcess = $null
 if (-not $HealthCheck) {
     Write-Host "[1/3] Iniciando llama-server com LFM3-Omni-2B na GPU..." -ForegroundColor Yellow
     
-    $ModelPath = "E:\modelos_ollama\LFM3-Omni-2B-F16.gguf"
+    $ModelPath = "E:\modelos_ollama\LFM3-Audio-2B-Q4_K_M.gguf"
+    $MmprojPath = "E:\modelos_ollama\mmproj-LFM3-Audio-2B-Q8_0.gguf"
     if (-not (Test-Path $ModelPath)) {
-        $ModelPath = "E:\modelos_ollama\LFM3-Omni-2B-Abliter8-BF16.gguf"
+        $ModelPath = "E:\modelos_ollama\LFM3-Omni-2B-F16.gguf"
+        $MmprojPath = "E:\modelos_ollama\mmproj-LFM3-Omni-2B-F16.gguf"
     }
-    $MmprojPath = "E:\modelos_ollama\mmproj-LFM3-Omni-2B-F16.gguf"
     
     Write-Host "      Modelo: $ModelPath" -ForegroundColor DarkCyan
     $ServerExe = "D:\isabella-desktop\tools\llama-cpp\llama-server.exe"

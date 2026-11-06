@@ -214,10 +214,11 @@ def ensure_llama_server() -> bool:
         pass
         
     log("[Watchdog]: Servidor neural offline na porta 8080. Reiniciando llama-server automaticamente...", "warning")
-    model_path = r"E:\modelos_ollama\LFM3-Omni-2B-F16.gguf"
+    model_path = r"E:\modelos_ollama\LFM3-Audio-2B-Q4_K_M.gguf"
+    mmproj_path = r"E:\modelos_ollama\mmproj-LFM3-Audio-2B-Q8_0.gguf"
     if not os.path.exists(model_path):
-        model_path = r"E:\modelos_ollama\LFM3-Omni-2B-Abliter8-BF16.gguf"
-    mmproj_path = r"E:\modelos_ollama\mmproj-LFM3-Omni-2B-F16.gguf"
+        model_path = r"E:\modelos_ollama\LFM3-Omni-2B-F16.gguf"
+        mmproj_path = r"E:\modelos_ollama\mmproj-LFM3-Omni-2B-F16.gguf"
     server_exe = r"D:\isabella-desktop\tools\llama-cpp\llama-server.exe"
     cmd = [
         server_exe, "-m", model_path, "--mmproj", mmproj_path,
