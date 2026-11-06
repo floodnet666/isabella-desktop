@@ -1,5 +1,22 @@
 # CHANGELOG
 
+## [2026-11-06 14:16:00] - Implementação e Comparativo das Abordagens de Voz (DSP vs Alinhamento Neural) em Branches Isoladas
+- **Branches Criadas e Publicadas no GitHub**:
+  - `origin/test/voice-dsp-spectral`: Implementação da Opção 1 (Casamento Espectral LTAS + Formantes DSP via filtro FIR linear e saturação harmônica analógica).
+  - `origin/test/voice-neural-clone`: Implementação da Opção 2 (Alinhamento de F0 via Phase Vocoder para 228.9 Hz mediano + warping de formantes + comparativo Kokoro ONNX).
+- **Áudio de Referência Novo Utilizado**:
+  - `ElevenLabs_2026-11-06T12_58_47_Isabella_gen_s50_sim75_v4.mp3` (42.11s, 44.1 kHz mono -> convertido para `assets/voices/isabella_elevenlabs_ref.wav`).
+- **Arquivos Criados**:
+  - `scripts/voice_dsp_morph.py`: Motor DSP de extração de envelope espectral LTAS via cepstral liftering e equalização adaptativa.
+  - `scripts/voice_neural_clone.py`: Pipeline de alinhamento de frequência fundamental (-1.2 semitons, F0 alvo = 228.9 Hz) e warping de trato vocal.
+  - `scripts/play_comparison.py`: Player interativo em console com reprodução em tempo real via `sounddevice`.
+  - `ouvir_comparacao_vozes.bat`: Launcher para audição instantânea por clique duplo.
+  - `assets/renders/voice_comparison/lfm3_base_raw.wav`: Fala base gerada pelo LFM3-Omni (11.04s, 24 kHz).
+  - `assets/renders/voice_comparison/option1_dsp_spectral_matched.wav`: Resultado da Opção 1 (DSP).
+  - `assets/renders/voice_comparison/option2_neural_pitch_formant_morph.wav`: Resultado da Opção 2 (Alinhamento Neural).
+  - `assets/renders/voice_comparison/option2_kokoro_isabella_neural.wav`: Síntese neural Kokoro com a mesma frase.
+- **Por quê**: Permitir ao usuário ouvir e confrontar auditivamente as abordagens antes de decidir qual arquitetura fundir na branch principal.
+
 ## [2026-11-05 16:44:00] - Atualização de URL do Repositório Remoto GitHub
 - **Arquivos Modificados**:
   - `D:\isabella-desktop\README.md` (Backup: `backups\root\README.md.bak_20261105_164400`)
