@@ -1,5 +1,19 @@
 # CHANGELOG
 
+## [2026-11-06 16:14:00] - Correção do Acúmulo de Fila de Microfone (Flush Queue) e Hard Cap de Áudio VAD (8.0s)
+- **Branch Ativa**:
+  - `origin/test/voice-omnivoice-clone`
+- **Arquivos Modificados**:
+  - `D:\isabella-desktop\scripts\voice_bridge_omnivoice.py` (Backup: `voice_bridge_omnivoice.py.bak_20261106_161400`)
+- **Causa Raiz do Read Timeout no ASR**:
+  - Durante o playback e síntese da fala anterior (10s a 20s), a thread do microfone continuava enfileirando blocos de áudio em `q`. Ao retornar ao loop de escuta, o consumidor pegava centenas de blocos acumulados do passado, concatenando falsos buffers de até **26.10 segundos**.
+  - O processamento de um áudio de 26s no Conformer demandava 18s a 35s, estourando o timeout do socket HTTP.
+- **Modificações Cirúrgicas**:
+  1. Implementada a função `flush_mic_queue(q)` que esvazia completamente a fila de áudio antes de cada nova escuta e logo após a fala da Isabella, descartando resíduos e ecos da síntese anterior.
+  2. Implementado teto rígido (*hard limit*) de **8.0 segundos** de gravação contínua no VAD, garantindo que nenhum áudio enviado ao Conformer exceda o limite de baixa latência (<1.5s de inferência).
+  3. Calibração do limiar adaptativo de ruído ajustada com piso de `0.0035` e teto de `0.0085`.
+
+
 ## [2026-11-06 16:05:00] - Resolução Definitiva de Concorrência de VRAM (llama-server -np 1 -c 2048) e Preservação do Conformer Causal ASR
 - **Branch Ativa**:
   - `origin/test/voice-omnivoice-clone` (branch principal `master` 100% intacta e intocada).

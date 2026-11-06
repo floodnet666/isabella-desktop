@@ -508,6 +508,14 @@ def speak_with_interruption_and_visemes(text: str, q: queue.Queue, threshold: fl
     is_speaking = False
     return interrupted
 
+def flush_mic_queue(q: queue.Queue):
+    """Descarta blocos de áudio residuais acumulados na fila durante a síntese ou fala."""
+    while not q.empty():
+        try:
+            q.get_nowait()
+        except Exception:
+            break
+
 def continuous_listener():
     fs = 16000
     q = queue.Queue()
@@ -534,7 +542,7 @@ def continuous_listener():
     with sd.InputStream(samplerate=fs, channels=1, dtype='float32', blocksize=int(fs*0.1), callback=lambda d,f,t,s: ambient.append(d.copy())):
         time.sleep(1.0)
     noise_floor = float(np.sqrt(np.mean(np.concatenate(ambient)**2)))
-    threshold = min(0.0075, max(0.0025, noise_floor * 2.5))
+    threshold = min(0.0085, max(0.0035, noise_floor * 2.8))
     log(f"[Calibração concluída]: Ruído base={noise_floor:.5f} | Limiar de voz={threshold:.5f}")
     log("--> Microfone ativo! Fale livremente ou use [ESPAÇO] no terminal para interromper.")
 
@@ -543,6 +551,7 @@ def continuous_listener():
     # Saudação de boas-vindas inicial com a voz clonada da Isabella
     welcome = "Oi Tiago! Eu sou a Isabella, e agora você está conversando comigo com a minha voz clonada. Como você está?"
     speak_with_interruption_and_visemes(welcome, q, threshold)
+    flush_mic_queue(q)
 
     with sd.InputStream(samplerate=fs, channels=1, dtype='float32', blocksize=int(fs*0.1), callback=mic_callback):
         audio_buffer = []
@@ -568,11 +577,15 @@ def continuous_listener():
                     audio_buffer.append(block)
                     if silence_start is None:
                         silence_start = time.time()
-                    elif time.time() - silence_start > 0.80:
+                    
+                    # Conclui gravação por silêncio (0.75s) ou teto rígido de duração (8.0s)
+                    rec_duration = len(audio_buffer) * 0.1
+                    if (time.time() - silence_start > 0.75) or (rec_duration >= 8.0):
                         recording = False
                         full_audio = np.concatenate(audio_buffer, axis=0).flatten()
                         audio_buffer = []
                         silence_start = None
+                        flush_mic_queue(q)
 
                         if len(full_audio) >= int(fs * 0.4):
                             print()
@@ -582,10 +595,8 @@ def continuous_listener():
                                 reply = think_and_respond(user_text)
                                 if reply:
                                     speak_with_interruption_and_visemes(reply, q, threshold)
-                                else:
-                                    send_state("listening", 0.0, 0.0, 0.0, 0.22, "neutral", 0.0)
-                            else:
-                                send_state("listening", 0.0, 0.0, 0.0, 0.22, "neutral", 0.0)
+                                flush_mic_queue(q)
+                            send_state("listening", 0.0, 0.0, 0.0, 0.22, "neutral", 0.0)
 
             except queue.Empty:
                 continue
