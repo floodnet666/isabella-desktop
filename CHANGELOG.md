@@ -1,5 +1,21 @@
 # CHANGELOG
 
+## [2026-11-06 16:05:00] - Resolução Definitiva de Concorrência de VRAM (llama-server -np 1 -c 2048) e Preservação do Conformer Causal ASR
+- **Branch Ativa**:
+  - `origin/test/voice-omnivoice-clone` (branch principal `master` 100% intacta e intocada).
+- **Arquivos Modificados**:
+  - `D:\isabella-desktop\start_isabella_omnivoice.ps1` (Backup: `start_isabella_omnivoice.ps1.bak_20261106_160200`)
+  - `D:\isabella-desktop\scripts\voice_bridge_omnivoice.py` (Backup: `voice_bridge_omnivoice.py.bak_20261106_160200`)
+- **Modificações Cirúrgicas**:
+  1. *start_isabella_omnivoice.ps1*: Substituído `-np 2 -c 4096` por `-np 1 -c 2048`. Como o TTS agora é gerado pelo OmniVoice via difusão, o slot secundário concorrente do `/tts` legado tornou-se obsoleto, liberando ~1.5 GB de VRAM.
+  2. *scripts/voice_bridge_omnivoice.py*:
+     - No watchdog `ensure_llama_server()`, atualizados parâmetros para `-np 1 -c 2048`.
+     - Em `transcribe_audio()` e `think_and_respond()`, timeout aumentado de 15s para 30s para absorver picos de I/O.
+- **Validação Empírica (Sem Whisper, 100% Conformer Nativo)**:
+  - Teste de ASR do Conformer Causal (`test_asr_timing.py`): transcrição de 3.6s de áudio executada em **560 milissegundos** (`Status: 200`).
+  - Teste conversacional end-to-end (`voice_test_omnivoice.py`): resposta de 32 palavras gerada em 1.14s; frase 1 clonada em 3.67s; frases 2 e 3 sintetizadas em background (zero pausas); 100% dos visemes entregues via UDP.
+
+
 ## [2026-11-06 15:52:00] - Implementação da Arquitetura de Conversa em Tempo Real com OmniVoice Cloned Voice
 - **Branch Ativa**:
   - `origin/test/voice-omnivoice-clone`

@@ -221,7 +221,7 @@ def ensure_llama_server() -> bool:
     server_exe = r"D:\isabella-desktop\tools\llama-cpp\llama-server.exe"
     cmd = [
         server_exe, "-m", model_path, "--mmproj", mmproj_path,
-        "-ngl", "99", "-fa", "auto", "-np", "2", "-c", "4096",
+        "-ngl", "99", "-fa", "auto", "-np", "1", "-c", "2048",
         "--jinja", "--reasoning", "off", "--no-reasoning-preserve", "--port", "8080"
     ]
     try:
@@ -309,7 +309,7 @@ def transcribe_audio(audio_float32: np.ndarray) -> str:
                 "temperature": 0.0,
                 "max_tokens": 128
             },
-            timeout=15
+            timeout=30
         )
         if r.status_code == 200:
             res_json = r.json()
@@ -350,7 +350,7 @@ def think_and_respond(user_text: str) -> str:
         r = requests.post(
             LLAMA_SERVER_URL,
             json=payload,
-            timeout=15
+            timeout=30
         )
         if r.status_code == 200:
             res_json = r.json()
