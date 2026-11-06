@@ -20,6 +20,7 @@ FILES = {
     "3": ("Opção 1: Casamento Espectral DSP (LTAS)", r"D:\isabella-desktop\assets\renders\voice_comparison\option1_dsp_spectral_matched.wav"),
     "4": ("Opção 2: Alinhamento Neural F0 (228.9 Hz) + Formantes", r"D:\isabella-desktop\assets\renders\voice_comparison\option2_neural_pitch_formant_morph.wav"),
     "5": ("Opção 2 (Extra): Síntese Neural Kokoro PT-BR", r"D:\isabella-desktop\assets\renders\voice_comparison\option2_kokoro_isabella_neural.wav"),
+    "6": ("Opção 3 (OmniVoice): Zero-Shot Diffusion Cloning", r"D:\isabella-desktop\assets\renders\voice_comparison\omnivoice_isabella_cloned.wav"),
 }
 
 def play_audio(name: str, path: str):
@@ -60,7 +61,7 @@ def main():
         print(" [S] Sair")
         print("="*60)
         
-        c = input("Escolha uma opção (1-5, A, S): ").strip().upper()
+        c = input("Escolha uma opção (1-6, A, S): ").strip().upper()
         if c == 'S':
             break
         elif c == 'A':

@@ -1,5 +1,19 @@
 # CHANGELOG
 
+## [2026-11-06 14:58:00] - Avaliação do Modelo de Clonagem Zero-Shot OmniVoice (Diffusion) na Branch Isolada
+- **Branch Dedicada**:
+  - `origin/test/voice-omnivoice-clone`
+- **Ambiente e Dependências Instaladas (via uv)**:
+  - Instalada biblioteca oficial `omnivoice==0.2.1` com `torch==2.7.1+cu118`, `torchaudio==2.7.1+cu118`, `transformers==5.22.1` e `sounddevice==0.5.6`.
+  - Pesos do modelo neural baixados do HuggingFace (`k2-fsa/OmniVoice`, 13 arquivos, ~1.5 GB).
+- **Arquivos Criados/Modificados**:
+  - `scripts/test_omnivoice_clone.py`: Script autônomo de clonagem acústica direta usando prompt de áudio de 12 segundos extraído da referência (`isabella_elevenlabs_ref_12s.wav`).
+  - `scripts/play_comparison.py`: Atualizado para incluir opção [6] OmniVoice Zero-Shot Diffusion Cloning.
+  - `assets/renders/voice_comparison/omnivoice_isabella_cloned.wav`: Áudio gerado (10.1s, 24 kHz float32, 485.324 bytes).
+- **Validação Empírica**:
+  - O pipeline de difusão completou a síntese na GPU RTX 3060 (`cuda:0`, float16) e executou playback direto nos alto-falantes do usuário com código de saída 0.
+
+
 ## [2026-11-06 14:16:00] - Implementação e Comparativo das Abordagens de Voz (DSP vs Alinhamento Neural) em Branches Isoladas
 - **Branches Criadas e Publicadas no GitHub**:
   - `origin/test/voice-dsp-spectral`: Implementação da Opção 1 (Casamento Espectral LTAS + Formantes DSP via filtro FIR linear e saturação harmônica analógica).
