@@ -1,5 +1,25 @@
 # CHANGELOG
 
+## [2026-11-06 15:52:00] - Implementação da Arquitetura de Conversa em Tempo Real com OmniVoice Cloned Voice
+- **Branch Ativa**:
+  - `origin/test/voice-omnivoice-clone`
+- **Arquivos Criados**:
+  - `scripts/save_omnivoice_prompt.py`: Pré-extração e persistência do prompt acústico (`VoiceClonePrompt`) da Isabella a partir de `isabella_elevenlabs_ref_12s.wav` para `assets/voices/isabella_omnivoice_prompt.pt` (elimina overhead de Whisper na referência e acelera inicialização).
+  - `scripts/benchmark_omnivoice.py`: Script de benchmark aferindo RTF de 1.16x na RTX 3060.
+  - `scripts/voice_bridge_omnivoice.py`: Motor conversacional interativo completo integrando:
+    1. VAD contínuo de microfone a 16kHz com calibração adaptativa de ruído de fundo.
+    2. ASR Conformer multimodal via `llama-server.exe` (porta 8080).
+    3. Raciocínio conversacional F16 sem censura com anti-recusa via logit-bias.
+    4. Síntese neural de fala progressiva frase-a-frase com `OmniVoice` na GPU mantendo prompt em VRAM.
+    5. Transmissão UDP de visemas FFT (`jaw_open`, `lip_round`, `lip_spread`) e emoções FACS a ~30Hz para o avatar 3DGS (`127.0.0.1:9888`).
+    6. Interrupção por tecla ou fala (barge-in acústico).
+  - `scripts/voice_test_omnivoice.py`: Testador de integração end-to-end de 1 turno conversacional.
+  - `start_isabella_omnivoice.ps1`: Script PowerShell de inicialização integrada (llama-server + isabella-core.exe + voice_bridge_omnivoice.py).
+  - `iniciar_conversa_omnivoice.bat`: Atalho executável por duplo clique para teste real pelo usuário.
+- **Validação Empírica**:
+  - Teste executado com sucesso: resposta do LLM gerada em 2.39s; frase 1 sintetizada em 3.88s; frases seguintes sintetizadas assincronamente em background (zero pausas); áudio reproduzido nos alto-falantes e visemes transmitidos via UDP com código de saída 0.
+
+
 ## [2026-11-06 14:58:00] - Avaliação do Modelo de Clonagem Zero-Shot OmniVoice (Diffusion) na Branch Isolada
 - **Branch Dedicada**:
   - `origin/test/voice-omnivoice-clone`
