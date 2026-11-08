@@ -982,3 +982,27 @@
     3. `no_ring`: 21.332 tokens gerados em 552,79 s (9m 12s, quase 2x mais lento); velocidade ponderada em colapso para **67,06 tok/s** (-53%); cache final em **479,83 MiB** e TTFT médio explodindo de 2,4s para 6,35s (picos de 15,4s).
   - Identificação e comprovação empírica de que o mecanismo `Q36_KV_RING=1` do motor `qwen36` (isolando 5 camadas de *sliding attention* num ring buffer fixo de 512 posições = 5,0 MiB) é o elemento-chave que permite à Isabella manter velocidade superior a 140 tok/s mesmo em conversações longas superiores a 20.000 tokens de histórico.
 - **Por quê**: Cumprir a solicitação do usuário de testar 30 turnos contínuos partindo da conferência de Sartre, mensurando tempos, velocidades, picos, mínimos, tamanho do KV cache e o impacto das técnicas modernas de gerenciamento de cache KV.
+
+
+## [2026-11-08 23:15:00] - Aplicação em Produção da Metodologia Ótima e Teste de Estresse aos Limites de KV (1 GB e 2 GB)
+
+### Arquivos Modificados
+- `start_isabella_omnivoice.ps1`: Inicialização automática do Colibri v2.1.0 na porta 8000 com variáveis de alta performance (`COLI_CUDA=1`, `COLI_LOOKUP=1`, `COLI_SPEC_GATE=1`, `COLI_CUDA_CHAIN_ROWS=4096`, `Q36_KV=f16`, `Q36_KV_RING=1`, `KVSAVE=0`) e modelos no drive NVMe interno `D:\isabella-desktop\assets\models\`, mantendo porta 8080 para o servidor multimodal ASR.
+- `start_isabella.ps1`: Mesma padronização da arquitetura mestre de produção com Colibri na porta 8000 e llama-server na porta 8080.
+- `scripts/voice_bridge_omnivoice.py`: Roteamento inteligente de geração de texto conversacional em streaming para o Colibri em 127.0.0.1:8000 (>140 tok/s), com fallback transparente para llama-server em 127.0.0.1:8080 e ASR dedicado via Conformer multimodal.
+- `scripts/voice_bridge.py`: Roteamento convergente do motor de inferência conversacional para porta 8000.
+
+### Arquivos Criados
+- `scripts/stress_test_kv_limits.py`: Suite de teste de estresse de contexto progressivo, avaliando 9 marcos estratégicos (2k, 10k, 22k, 32k, 50k, 87k [1 GiB], 128k [teto nativo], 174k [2 GiB] e 200k+).
+- `assets/renders/benchmark_kv_limits/kv_stress_results_*.json`: Dados empíricos coletados dos testes de estresse.
+
+### Detalhamento Cirúrgico
+- **Adicionado**:
+  - Aplicação dos parâmetros ótimos auditados no runtime dos launchers e bridges de voz.
+  - Teste de estresse com scaling de contexto:
+    1. *Até 32k tokens*: Desempenho mantido entre **136,1 e 166,2 tok/s**, VRAM entre 1,76 GB e 2,50 GB, atingindo com folga todas as metas do usuário (mínimo 100 tok/s, médio 120 tok/s, pico até 218 tok/s).
+    2. *50k tokens*: Velocidade sustentada em **117,4 tok/s**, VRAM em 2,71 GB (44,2% de 6GB).
+    3. *87k tokens (1.0 GiB de KV Cache)*: Ocorre em 86.954 tokens; velocidade em **91,3 tok/s**, VRAM em 3,15 GB (51,2%).
+    4. *128k tokens (1.5 GiB de KV Cache)*: Esgotamento de VRAM a 90,7% (5.574 MiB), forçando paging para memória host do sistema (RAM) e derrubando a velocidade para **3,5 tok/s**.
+    5. *174k tokens (2.0 GiB de KV Cache) - Ponto de Ruptura*: O motor Colibri detecta que o buffer de 2.0 GiB de KV não deixa margem para manter os pesos do modelo na VRAM de 6GB (`dev 0 holds 0.0 MB of trunk`); o subsistema CUDA é desativado (`chain stays off`) e a inferência cai 100% para a CPU.
+- **Por quê**: Atender ao comando `/goal` do usuário solicitando a aplicação da metodologia ótima em produção e o teste empírico dos limites de 1 GB e 2 GB de KV Cache com identificação exata do ponto de quebra.

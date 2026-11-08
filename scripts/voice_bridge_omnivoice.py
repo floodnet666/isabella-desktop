@@ -145,6 +145,18 @@ def log(msg, level="info"):
 
 LLAMA_SERVER_URL = "http://127.0.0.1:8080/v1/chat/completions"
 LLAMA_HEALTH_URL = "http://127.0.0.1:8080/health"
+COLIBRI_SERVER_URL = "http://127.0.0.1:8000/v1/chat/completions"
+COLIBRI_HEALTH_URL = "http://127.0.0.1:8000/v1/models"
+
+def get_generation_url() -> str:
+    """Retorna Colibri na porta 8000 se ativo (>140 tok/s), com fallback transparente para llama-server (8080)."""
+    try:
+        r = requests.get(COLIBRI_HEALTH_URL, timeout=0.5)
+        if r.status_code == 200:
+            return COLIBRI_SERVER_URL
+    except Exception:
+        pass
+    return LLAMA_SERVER_URL
 
 REFUSAL_LOGIT_BIAS = {
     4083: -100.0,   # " cannot"
@@ -444,7 +456,8 @@ def stream_conversation_turn(user_text: str, q: queue.Queue, threshold: float) -
             "stream": True,
         }
         try:
-            r = requests.post(LLAMA_SERVER_URL, json=payload, stream=True, timeout=15)
+            target_url = get_generation_url()
+            r = requests.post(target_url, json=payload, stream=True, timeout=15)
             buffer = ""
             for line in r.iter_lines():
                 if stop_event.is_set():
@@ -625,11 +638,17 @@ def continuous_listener():
     # 1. Iniciar OmniVoice
     init_omnivoice()
 
-    # 2. Verificar servidor neural LFM3
-    if ensure_llama_server():
-        log("--> [Servidor Neural]: Conectado com sucesso em 127.0.0.1:8080")
+    # 2. Verificar servidores neurais (ASR + LLM)
+    gen_url = get_generation_url()
+    if gen_url == COLIBRI_SERVER_URL:
+        log("--> [Motor LLM Streaming]: Colibri CUDA v2.1.0 ativo em 127.0.0.1:8000 (>140 tok/s)")
     else:
-        log("--> [ERRO CRÍTICO]: Servidor neural offline em 127.0.0.1:8080", "error")
+        log("--> [Motor LLM Streaming]: llama-server ativo em 127.0.0.1:8080 (fallback)")
+
+    if ensure_llama_server():
+        log("--> [Servidor Neural ASR]: Conectado com sucesso em 127.0.0.1:8080")
+    else:
+        log("--> [ERRO CRÍTICO]: Servidor ASR offline em 127.0.0.1:8080", "error")
         return
 
     log("\n[Calibrando ruído ambiente do microfone por 1.0s...]")
