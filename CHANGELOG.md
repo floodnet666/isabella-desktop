@@ -960,3 +960,25 @@
     - Carga dos tensores no Colibri: Drive C (1,10 s), Drive D (1,20 s), Drive E (2,50 s -> 2,27x mais lento).
     - TTFT inicial (Cold Start): Drive C (63,7 ms), Drive D (174,5 ms), Drive E (187,4 ms).
 - **Por quê**: Validar a hipótese levantada pelo usuário de que o Drive E (conectado via USB-C) apresentava gargalo de I/O em relação aos SSDs NVMe internos (C: e D:).
+
+
+## [2026-11-08 18:25:00] - Benchmark de KV Cache em 30 Turnos: Comparativo FP16 vs FP32 vs Linear (No-Ring)
+
+### Arquivos Criados
+- `scripts/benchmark_kv_cache_30turns.py`: Script autônomo de benchmark para conversação contínua de 30 turnos, com rastreamento de métricas finas por turno (TTFT, tok/s, tokens de prompt/completion, taxa de reuso do prefix cache, latência T(1) do gating especulativo, aceitação do n-gram lookup, espera de GPU em ms/token, RSS do processo via psutil, VRAM via nvidia-smi e cálculo analítico da geometria e capacidade do KV cache no motor `qwen36`).
+- `assets/renders/benchmark_kv_cache/kv30_baseline_f16_20261108_180045.json`: Dados empíricos completos dos 30 turnos do baseline de produção (FP16 com Ring Buffer ativo).
+- `assets/renders/benchmark_kv_cache/kv30_kv_f32_20261108_180826.json`: Dados empíricos completos dos 30 turnos com precisão FP32 no cache KV (`Q36_KV=f32`).
+- `assets/renders/benchmark_kv_cache/kv30_no_ring_20261108_181756.json`: Dados empíricos completos dos 30 turnos com ring buffer desativado (`Q36_KV_RING=0`).
+- `logs/kv30_baseline_f16_server.log`: Log de execução e estatísticas do servidor Colibri no teste baseline.
+- `logs/kv30_kv_f32_server.log`: Log de execução e estatísticas do servidor Colibri no teste FP32.
+- `logs/kv30_no_ring_server.log`: Log de execução e estatísticas do servidor Colibri no teste No-Ring.
+
+### Detalhamento Cirúrgico
+- **Adicionado**:
+  - Implementação de bateria padronizada de 30 perguntas filosóficas correlacionadas, partindo de *"O existencialismo é um humanismo?"* e explorando Sartre, Beauvoir, Camus, Heidegger, Kierkegaard, Merleau-Ponty e Dostoiévski.
+  - Execução dos 3 experimentos comparativos (90 turnos e >64.500 tokens totais):
+    1. `baseline_f16`: 21.338 tokens gerados em 277,56 s (4m 37s); média ponderada de **142,89 tok/s** (média aritmética de 157,19 tok/s, pico de 218,12 tok/s); contexto final de 22.331 posições ocupando apenas **266,69 MiB** de KV cache com pico de VRAM em 2.443 MiB.
+    2. `kv_f32`: 21.860 tokens gerados em 328,56 s; média ponderada de **103,20 tok/s** (perda de ~28% por saturação de banda de VRAM); cache KV final ocupando **545,88 MiB** (exatamente o dobro) e pico de VRAM em 2.889 MiB.
+    3. `no_ring`: 21.332 tokens gerados em 552,79 s (9m 12s, quase 2x mais lento); velocidade ponderada em colapso para **67,06 tok/s** (-53%); cache final em **479,83 MiB** e TTFT médio explodindo de 2,4s para 6,35s (picos de 15,4s).
+  - Identificação e comprovação empírica de que o mecanismo `Q36_KV_RING=1` do motor `qwen36` (isolando 5 camadas de *sliding attention* num ring buffer fixo de 512 posições = 5,0 MiB) é o elemento-chave que permite à Isabella manter velocidade superior a 140 tok/s mesmo em conversações longas superiores a 20.000 tokens de histórico.
+- **Por quê**: Cumprir a solicitação do usuário de testar 30 turnos contínuos partindo da conferência de Sartre, mensurando tempos, velocidades, picos, mínimos, tamanho do KV cache e o impacto das técnicas modernas de gerenciamento de cache KV.
