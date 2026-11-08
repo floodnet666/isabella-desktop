@@ -91,8 +91,31 @@ uv run python scripts/setup_llamacpp.py
 ```
 
 ### 3. Configurar Modelos e Pesos
-- **Modelo 3DGS (`.ply`)**: Coloque o arquivo de gaussianas em `assets/models/isabella_bust_4x_1m.ply` (consulte `assets/models/README.md` para instruções de reconstrução via `idol-sdk`).
-- **Modelo Multimodal (`.gguf`)**: Certifique-se de que o modelo `LFM3-Omni-2B-F16.gguf` e o projetor `mmproj-LFM3-Omni-2B-F16.gguf` estejam no caminho configurado no script (padrão: `E:\modelos_ollama\` ou `assets/models/llm_multimodal/`).
+- **Modelo 3DGS (`.ply`)**: O modelo de produção fotorealista de 1M gaussianas reside em `assets/models/isabella_bust_4x_1m.ply`.
+- **Modelos de Linguagem e Áudio (`.gguf` e `.colibri`)**: Todos os pesos neurais devem ser posicionados na pasta local do projeto em `assets/models/` (Drive NVMe `D:`):
+  - `assets/models/LFM3-Audio-2B-Q4_K_M.gguf`: Pesos quantizados em Q4_K_M para inferência ultrarrápida via `llama-server`.
+  - `assets/models/mmproj-LFM3-Audio-2B-Q8_0.gguf`: Projetor multimodal de áudio e visão.
+  - `assets/models/LFM3-Audio-2B-Q4_K_M.colibri`: Contêiner otimizado para o motor nativo Colibri v2.1.0.
+  *(A hospedagem local no drive NVMe interno `D:` garante ~1.841 MB/s de taxa de transferência, erradicando a latência e os gargalos de barramento observados em drives externos USB-C).*
+
+---
+
+## ⚡ Motores de Inferência e Benchmarks (>100 tok/s)
+
+O sistema suporta alternância transparente entre **llama.cpp** e **JustVugg/Colibri** (v2.1.0), ambos configurados para o modelo `LFM3-Audio-2B` em GPU NVIDIA RTX 3060:
+
+| Motor / Backend | SSD / Barramento | TTFT Prefill | Vazão de Decodificação | Status |
+| :--- | :--- | :--- | :--- | :--- |
+| **Colibri (CUDA Otimizado)** | **NVMe D: (Interno)** | **66.1 ms** | **104.9 – 133.7 tok/s** | **Meta >100 tok/s Superada** |
+| **llama.cpp (CUDA)** | **NVMe D: (Interno)** | **83.0 ms** | **101.9 – 106.5 tok/s** | **Alta Velocidade** |
+| **Colibri (Vulkan GPU)** | NVMe D: (Interno) | 191.3 ms | 76.3 tok/s | Baseline Vulkan |
+| Colibri (Vulkan GPU) | USB-C E: (Externo) | 281.4 ms | 66.6 – 92.6 tok/s | Penalidade de barramento USB (+49% latência) |
+
+### Execução de Alta Performance do Colibri (>100 tok/s)
+```powershell
+$env:COLI_CUDA="1"; $env:COLI_LOOKUP="1"; $env:COLI_SPEC_GATE="1"; $env:COLI_CUDA_CHAIN_ROWS="4096"; $env:Q36_KV="f16"
+& "C:\Users\thiag\AppData\Local\colibri\runtime\colibri-v2.1.0\coli.cmd" serve --model "assets\models\LFM3-Audio-2B-Q4_K_M.colibri" --port 8000 --ctx 2048 --policy experimental-fast --no-think
+```
 
 ### 4. Compilar o Renderizador em Rust
 ```powershell
