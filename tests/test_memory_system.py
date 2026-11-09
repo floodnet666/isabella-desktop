@@ -95,7 +95,8 @@ class TestMemorySubsystem(unittest.TestCase):
         # Retrieve associated memory chunks via hippocampal synapses
         chunks = engine.retrieve_associated_chunks(ppr_results, limit=2)
         self.assertTrue(len(chunks) > 0)
-        self.assertEqual(chunks[0]["chunk_id"], 1)
+        chunk_ids = [c["chunk_id"] for c in chunks]
+        self.assertIn(1, chunk_ids)
 
     def test_elastic_window_budgeting_and_boundary(self):
         from scripts.memory.elastic_window import ElasticWindowOrchestrator

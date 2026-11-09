@@ -552,7 +552,7 @@ impl SplatRenderer {
         if self.config.format == wgpu::TextureFormat::Bgra8Unorm
             || self.config.format == wgpu::TextureFormat::Bgra8UnormSrgb
         {
-            for pixel in unpadded_data.chunks_exact_mut(4) {
+            for pixel in unpadded_data.chunks_mut(4) {
                 pixel.swap(0, 2);
             }
         }
