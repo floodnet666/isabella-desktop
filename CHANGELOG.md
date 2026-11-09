@@ -1,5 +1,22 @@
 # CHANGELOG
 
+## [2026-11-09 10:36:00] - Publicação de Release Oficial no GitHub (v0.1.0-alpha), pyproject.toml para CI/CD e Separação no README entre Consumidor Final e Desenvolvedor
+- **Branch Ativa**:
+  - `master`
+- **Arquivos Criados**:
+  - `pyproject.toml` (Declaração formal de metadados do projeto e dependências Python para execução automática no GitHub Actions e no uv)
+- **Arquivos Modificados**:
+  - `.github/workflows/ci.yml` (Adicionada etapa `uv pip install --system -e .` no runner do GitHub para erradicar `ModuleNotFoundError: networkx`)
+  - `README.md` (Backup: `backups/root/README.md.bak_20261109_103600`)
+  - `CHANGELOG.md` (Backup: `backups/changelogs/CHANGELOG.md.bak_20261109_103600`)
+- **Implementações e Resolução dos Feedbacks dos Screenshots**:
+  1. *Aba Releases Vazia no GitHub*:
+     - Criado pacote compilado portátil com `IsabellaSetup.exe` e `isabella-core.exe` para publicação oficial da Release `v0.1.0-alpha` no GitHub via `gh release create`.
+  2. *README com Foco no Usuário Final*:
+     - Separado explicitamente o fluxo de quem é consumidor final (baixo o executável pela aba Releases sem precisar de Git, Python ou Rust) do fluxo de desenvolvedores que desejam compilar o código-fonte.
+  3. *Correção do Pipeline de CI no GitHub Actions*:
+     - Adicionado `pyproject.toml` contendo `networkx`, `numpy`, `pillow`, `sounddevice`, `soundfile` e `requests`, fazendo o job `python-quality` rodar verde no GitHub Actions.
+
 ## [2026-11-09 10:20:00] - Assistente Nativo de Personalidade no Instalador (`IsabellaSetup.exe`, Opção A), Execução 100% Silenciosa (Zero Terminais) e Ícone no System Tray (`Shell_NotifyIconW`)
 - **Branch Ativa**:
   - `master`

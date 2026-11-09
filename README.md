@@ -101,54 +101,60 @@ O **Isabella Desktop** é uma assistente interativa executada inteiramente no ha
 
 ---
 
-## ⚙️ Pré-requisitos do Sistema
+## ⚙️ Requisitos do Sistema
 
 - **Sistema Operacional**: Windows 11 (64-bit).
-- **Placa de Vídeo**: GPU NVIDIA com suporte a CUDA 12.4 e 6 GB+ VRAM (ex: RTX 3060, 4060, 4070 ou superior).
-- **Compilador Rust**: [Rust 1.80+](https://rustup.rs/) com toolchain `stable-x86_64-pc-windows-msvc`.
-- **Gerenciador Python**: [uv](https://docs.astral.sh/uv/) (executável standalone).
-- **Git**: Com suporte a submódulos (`git clone --recurse-submodules`).
+- **Placa de Vídeo**: GPU NVIDIA com suporte a CUDA e 6 GB+ VRAM dedicada (ex.: RTX 3060, 4060, 4070 ou superior).
+- **Armazenamento**: SSD NVMe interno recomendado para inferência em streaming ultrarrápida (>140 tok/s).
+- *(Usuários Finais: NÃO é necessário instalar Git, compilador Rust ou Python — use o executável pronto das Releases abaixo).*
 
 ---
 
-## 🚀 Instalação Rápida (1 Clique)
+## 🚀 Instalação para Usuários Finais (Releases Oficiais)
 
-### 1. Clonar o Repositório
+Para quem deseja apenas usar a Isabella no dia a dia como companion de área de trabalho sem mexer com código ou terminais:
+
+1. Acesse a aba **[Releases](https://github.com/floodnet666/isabella-desktop/releases)** do repositório;
+2. Baixe o pacote executável pré-compilado **`IsabellaCompanion-Setup.zip`**;
+3. Extraia e dê duplo clique em **`IsabellaSetup.exe`**.
+
+### O que o Assistente de Instalação (`IsabellaSetup.exe`) faz automaticamente:
+- **Questionário de Personalidade Nativo em Rust**:
+  - Define como a Isabella deve te chamar;
+  - Seleciona o **Arquétipo de Personalidade e Expressão Facial 3DGS**:
+    - *Doce, Acolhedora & Afetuosa* (carinhosa, calorosa e sorriso suave);
+    - *Filosófica & Reflexiva* (poética, analítica e reflexiva);
+    - *Espirituosa, Irônica & Provocante* (humor rápido, sagaz e olhar smirk);
+    - *Focada, Eficiente & Pragmática* (direta ao ponto, técnica e objetiva);
+  - Escolhe o ritmo da fala e a iniciativa conversacional;
+  - Configura o motor de voz (OmniVoice 24kHz Diffusion ou LiquidCodec);
+- **Inoculação Automática de Memória**: Salva `config/personality_profile.json` e inocula o banco **HippoRAG 2 + Contextual FTS5** (`assets/data/isabella_memory.db`) com as memórias raiz do perfil;
+- **Criação do Atalho na Área de Trabalho**: Adiciona o atalho **`Isabella Companion`** apontando diretamente para o binário nativo.
+
+### Operação 100% Silenciosa (System Tray — Zero Terminais):
+Ao iniciar pelo atalho da Área de Trabalho, **nenhuma janela preta de console (terminal `cmd` ou `PowerShell`) é aberta**. A Isabella:
+- Flutua diretamente sobre a área de trabalho com transparência DWM de sub-pixel;
+- Fica ancorada na bandeja do sistema (**System Tray**, ao lado do relógio do Windows);
+- Pelo menu de contexto (botão direito no ícone), você pode trocar a personalidade em tempo real, ocultar/mostrar o avatar, reiniciar serviços de voz ou encerrar a aplicação limpamente.
+
+---
+
+## 🛠️ Instalação para Desenvolvedores (Compilação a partir do Código-Fonte)
+
+Caso queira contribuir, modificar os shaders WGSL ou estender os módulos de IA:
+
+### 1. Pré-requisitos de Desenvolvimento
+- [Rust 1.80+](https://rustup.rs/) (`stable-x86_64-pc-windows-msvc`);
+- [uv](https://docs.astral.sh/uv/) (gerenciador de pacotes Python standalone);
+- Git com suporte a submódulos.
+
+### 2. Clonar e Compilar
 ```powershell
 git clone --recurse-submodules https://github.com/floodnet666/isabella-desktop.git
 cd isabella-desktop
+.\instalar.bat
 ```
-
-### 2. Executar o Instalador e Assistente de Personalidade (`IsabellaSetup.exe`)
-Dê duplo clique em **`IsabellaSetup.exe`** (ou **`instalar.bat`** para compilação completa a partir do código-fonte):
-```powershell
-.\IsabellaSetup.exe
-```
-O assistente gráfico nativo em Rust (`IsabellaSetup.exe`):
-1. Apresenta o **Questionário de Personalidade em 5 eixos**:
-   - **Nome preferido do usuário**;
-   - **Arquétipo de Personalidade e Expressão 3DGS (FACS)**:
-     - *Doce, Acolhedora & Afetuosa*
-     - *Filosófica & Reflexiva*
-     - *Espirituosa, Irônica & Provocante*
-     - *Focada, Eficiente & Pragmática*
-   - **Estilo e Ritmo de Resposta** (*Direta e Concisa* vs *Desenvolvida e Explicativa*);
-   - **Iniciativa Conversacional** (*Proativa e Curiosa* vs *Reservada e Direta*);
-   - **Motor Neural de Voz** (*OmniVoice 24kHz Diffusion* vs *LFM3 LiquidCodec*);
-2. Gera automaticamente `config/personality_profile.json` ajustando o `SYSTEM_PROMPT`, a velocidade da fala e as expressões faciais de repouso (`base_smile`, `base_smirk`);
-3. **Inocula o banco de memória HippoRAG 2 + Contextual FTS5** (`assets/data/isabella_memory.db`) com as triplas fundamentais da preferência do usuário;
-4. Cria o atalho **`Isabella Companion`** na Área de Trabalho apontando diretamente para `isabella-core.exe` com ícone personalizado (`assets/isabella_icon.ico`).
-
-### 3. Execução 100% Silenciosa em Segundo Plano (System Tray — Zero Terminais)
-Ao clicar no atalho **`Isabella Companion`** na Área de Trabalho:
-- **Zero janelas de terminal (`cmd` / `PowerShell`) são abertas**: `isabella-core.exe` opera como aplicação nativa do subsistema gráfico Windows (`windows_subsystem = "windows"`, `WS_EX_TOOLWINDOW`) e supervisiona internamente os motores neurais (`Colibri`, `llama-server` e `Voice Bridge`) via flag Win32 `CREATE_NO_WINDOW` (`0x08000000`).
-- **Ícone na Área de Notificação (System Tray)**: Clique com o botão direito no ícone da Isabella perto do relógio do Windows para:
-  - *Mostrar / Ocultar Isabella no Desktop*;
-  - *Trocar a Personalidade em Tempo Real* (Doce, Filosófica, Espirituosa ou Focada);
-  - *Abrir o Assistente de Personalidade (`IsabellaSetup.exe`)*;
-  - *Reiniciar Motores de Voz em Background*;
-  - *Abrir Pasta de Logs*;
-  - *Encerrar Isabella Companion* (finaliza limpa e automaticamente todos os processos filhos).
+Isso instalará as dependências via `uv`, compilará o crate Rust `isabella-core` e configurará as ferramentas CUDA do `llama.cpp`.
 
 ---
 
