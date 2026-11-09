@@ -66,9 +66,9 @@ jobs:
         run: |
           uv python install 3.11
 
-      - name: Install Project Dependencies
+      - name: Install Dependencies
         run: |
-          uv pip install --system -e .
+          uv pip install --system -r requirements.txt
 
       - name: Verify Python Compilation / Syntax
         run: |
