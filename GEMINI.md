@@ -65,7 +65,7 @@ O **Isabella Desktop** é um companion interativo de área de trabalho para Wind
 
 ## 2. Fase Atual do Projeto
 
-**Status Atual**: **Fase 2 Concluída com Sucesso / Fase 3 Pronta para Início**.
+**Status Atual**: **Fase 3 Concluída e Integrada à Branch Oficial (`master`)**.
 
 ### O Que Já Está Implementado e Validado:
 1. **Modelo 3DGS HD de 1.048.576 Gaussianas** (`isabella_bust_4x_1m.ply`):

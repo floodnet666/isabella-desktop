@@ -1,5 +1,26 @@
 # CHANGELOG
 
+## [2026-11-09 09:17:00] - Merge Oficial da Branch de Testes (`test/voice-omnivoice-clone`) na Branch `master`
+- **Branch Ativa**:
+  - `master`
+- **Merge Realizado**:
+  - Commit `f18b46e` (estratégia `ort`, `--no-ff`)
+  - 16 commits consolidados cobrindo Fase 2 e Fase 3 completas.
+- **Arquivos Modificados**:
+  - `GEMINI.md` (Backup: `backups/root/GEMINI.md.bak_20261109_091630`)
+  - `CHANGELOG.md` (Backup: `backups/changelogs/CHANGELOG.md.bak_20261109_091630`)
+- **Status do Projeto**:
+  - **Fase 3 Oficializada**: Clonagem acústica OmniVoice Diffusion (`num_step=16`, 24 kHz), inferência neural Colibri v2.1.0 CUDA (>140 tok/s), subsistema de memória persistente HippoRAG 2 + Contextual FTS5 e orquestração elástica de contexto (2k-8k tokens).
+- **Validação de CI/CD e Regressão Pré-Merge na `master`**:
+  - `uv run python -m unittest discover tests`: 5/5 testes unitários aprovados (0 falhas).
+  - `uv run python -m compileall scripts tests`: 100% dos scripts compilados sem erros de sintaxe.
+  - `cargo clippy --manifest-path isabella-core/Cargo.toml -- -D warnings`: Aprovado sem warnings.
+  - `cargo fmt --check --manifest-path isabella-core/Cargo.toml`: Aprovado (formatação canônica).
+  - `cargo test --manifest-path isabella-core/Cargo.toml`: Suíte Rust aprovada.
+  - `cargo build --release --manifest-path isabella-core/Cargo.toml`: Compilado com sucesso.
+  - `isabella-core.exe --snapshot`: Renderização 3DGS offscreen gerada com integridade (595 KB).
+  - `isabella-core.exe --test-emotions`: Bateria completa das 8 expressões emocionais FACS validada.
+
 ## [2026-11-09 09:15:00] - Hardening de Código, Pipeline de CI/CD (GitHub Actions) e Bateria de Regressão Completa
 - **Branch Ativa**:
   - `origin/test/voice-omnivoice-clone`
