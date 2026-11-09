@@ -14,11 +14,11 @@ struct QuadVertex {
 
 const QUAD_VERTICES: [QuadVertex; 6] = [
     QuadVertex { pos: [-1.0, -1.0] },
-    QuadVertex { pos: [ 1.0, -1.0] },
-    QuadVertex { pos: [-1.0,  1.0] },
-    QuadVertex { pos: [-1.0,  1.0] },
-    QuadVertex { pos: [ 1.0, -1.0] },
-    QuadVertex { pos: [ 1.0,  1.0] },
+    QuadVertex { pos: [1.0, -1.0] },
+    QuadVertex { pos: [-1.0, 1.0] },
+    QuadVertex { pos: [-1.0, 1.0] },
+    QuadVertex { pos: [1.0, -1.0] },
+    QuadVertex { pos: [1.0, 1.0] },
 ];
 
 #[repr(C)]
@@ -67,7 +67,10 @@ pub struct SplatRenderer {
 }
 
 impl SplatRenderer {
-    pub async fn new(window: Arc<Window>, mut splats: Vec<SplatGpu>) -> Result<Self, Box<dyn std::error::Error>> {
+    pub async fn new(
+        window: Arc<Window>,
+        mut splats: Vec<SplatGpu>,
+    ) -> Result<Self, Box<dyn std::error::Error>> {
         let size = window.inner_size();
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: wgpu::Backends::VULKAN | wgpu::Backends::DX12,
@@ -96,7 +99,7 @@ impl SplatRenderer {
             .await?;
 
         let caps = surface.get_capabilities(&adapter);
-        
+
         let surface_format = caps
             .formats
             .iter()
@@ -104,10 +107,16 @@ impl SplatRenderer {
             .find(|f| f.is_srgb())
             .unwrap_or(caps.formats[0]);
 
-        let alpha_mode = if caps.alpha_modes.contains(&wgpu::CompositeAlphaMode::PreMultiplied) {
+        let alpha_mode = if caps
+            .alpha_modes
+            .contains(&wgpu::CompositeAlphaMode::PreMultiplied)
+        {
             println!("[Renderer] Alpha mode PreMultiplied ativado para fundo 100% transparente.");
             wgpu::CompositeAlphaMode::PreMultiplied
-        } else if caps.alpha_modes.contains(&wgpu::CompositeAlphaMode::PostMultiplied) {
+        } else if caps
+            .alpha_modes
+            .contains(&wgpu::CompositeAlphaMode::PostMultiplied)
+        {
             println!("[Renderer] Alpha mode PostMultiplied ativado.");
             wgpu::CompositeAlphaMode::PostMultiplied
         } else if caps.alpha_modes.contains(&wgpu::CompositeAlphaMode::Auto) {
@@ -131,9 +140,14 @@ impl SplatRenderer {
         surface.configure(&device, &config);
 
         // Ordenar splats back-to-front ao longo do eixo Z frontal (elimina granulação e dither)
-        println!("[Renderer] Ordenando {} gaussianas por profundidade...", splats.len());
+        println!(
+            "[Renderer] Ordenando {} gaussianas por profundidade...",
+            splats.len()
+        );
         splats.sort_by(|a, b| {
-            a.position[2].partial_cmp(&b.position[2]).unwrap_or(std::cmp::Ordering::Equal)
+            a.position[2]
+                .partial_cmp(&b.position[2])
+                .unwrap_or(std::cmp::Ordering::Equal)
         });
 
         let quad_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -156,19 +170,20 @@ impl SplatRenderer {
             mapped_at_creation: false,
         });
 
-        let uniform_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("Uniform Bind Group Layout"),
-            entries: &[wgpu::BindGroupLayoutEntry {
-                binding: 0,
-                visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Uniform,
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
-                },
-                count: None,
-            }],
-        });
+        let uniform_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("Uniform Bind Group Layout"),
+                entries: &[wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                }],
+            });
 
         let uniform_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("Uniform Bind Group"),
@@ -288,7 +303,9 @@ impl SplatRenderer {
         expr: ExpressionParams,
     ) -> Result<(), wgpu::SurfaceError> {
         let output = self.surface.get_current_texture()?;
-        let view = output.texture.create_view(&wgpu::TextureViewDescriptor::default());
+        let view = output
+            .texture
+            .create_view(&wgpu::TextureViewDescriptor::default());
 
         let w_f = self.config.width as f32;
         let h_f = self.config.height as f32;
@@ -318,11 +335,14 @@ impl SplatRenderer {
             emotion_b: [expr.sadness, expr.surprise, expr.smirk, expr.brow_raise],
         };
 
-        self.queue.write_buffer(&self.uniform_buffer, 0, bytemuck::cast_slice(&[uniforms]));
+        self.queue
+            .write_buffer(&self.uniform_buffer, 0, bytemuck::cast_slice(&[uniforms]));
 
-        let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("Render Encoder"),
-        });
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Render Encoder"),
+            });
 
         {
             let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -378,9 +398,11 @@ impl SplatRenderer {
             0.0,
             ExpressionParams::default(),
             output_path,
-        ).await
+        )
+        .await
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub async fn render_expression_view(
         &self,
         width: u32,
@@ -402,7 +424,8 @@ impl SplatRenderer {
             let db = (pb - eye).length_squared();
             db.partial_cmp(&da).unwrap_or(std::cmp::Ordering::Equal)
         });
-        self.queue.write_buffer(&self.instance_buffer, 0, bytemuck::cast_slice(&sorted));
+        self.queue
+            .write_buffer(&self.instance_buffer, 0, bytemuck::cast_slice(&sorted));
 
         let texture_desc = wgpu::TextureDescriptor {
             label: Some("Snapshot Texture"),
@@ -441,11 +464,14 @@ impl SplatRenderer {
             emotion_a: [expr.joy, expr.anger, expr.disgust, expr.fear],
             emotion_b: [expr.sadness, expr.surprise, expr.smirk, expr.brow_raise],
         };
-        self.queue.write_buffer(&self.uniform_buffer, 0, bytemuck::cast_slice(&[uniforms]));
+        self.queue
+            .write_buffer(&self.uniform_buffer, 0, bytemuck::cast_slice(&[uniforms]));
 
-        let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("Snapshot Encoder"),
-        });
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Snapshot Encoder"),
+            });
 
         {
             let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -473,7 +499,7 @@ impl SplatRenderer {
         let bytes_per_pixel = 4;
         let unpadded_bytes_per_row = width * bytes_per_pixel;
         let align = wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
-        let padded_bytes_per_row = ((unpadded_bytes_per_row + align - 1) / align) * align;
+        let padded_bytes_per_row = unpadded_bytes_per_row.div_ceil(align) * align;
         let buffer_size = (padded_bytes_per_row * height) as u64;
 
         let output_buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
@@ -554,8 +580,14 @@ impl SplatRenderer {
             height,
             Vec3::new(0.0, -0.02, 1.45),
             Vec3::new(0.0, -0.02, 0.0),
-            wgpu::Color { r: 1.0, g: 1.0, b: 1.0, a: 1.0 },
+            wgpu::Color {
+                r: 1.0,
+                g: 1.0,
+                b: 1.0,
+                a: 1.0,
+            },
             output_path,
-        ).await
+        )
+        .await
     }
 }

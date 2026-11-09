@@ -1,5 +1,42 @@
 # CHANGELOG
 
+## [2026-11-09 09:15:00] - Hardening de Código, Pipeline de CI/CD (GitHub Actions) e Bateria de Regressão Completa
+- **Branch Ativa**:
+  - `origin/test/voice-omnivoice-clone`
+- **Arquivos Criados**:
+  - `.github\workflows\ci.yml` (Pipeline de CI/CD com jobs para Rust Quality, Python Quality e Validação de Governança)
+- **Arquivos Modificados**:
+  - `isabella-core\src\ply_loader.rs` (Backup: `backups/isabella-core/ply_loader.rs.bak_20261109_091150`)
+  - `isabella-core\src\renderer.rs` (Backup: `backups/isabella-core/renderer.rs.bak_20261109_091150`)
+  - `isabella-core\src\main.rs` (Backup: `backups/isabella-core/main.rs.bak_20261109_091150`)
+  - `scripts\check_live2d_api.py` (Backup: `backups/scripts/check_live2d_api.py.bak_20261109_091440`)
+  - `CHANGELOG.md` (Backup: `backups/changelogs/CHANGELOG.md.bak_20261109_091500`)
+- **Problema & Metas**:
+  1. *Conformidade de CI/CD*: Preparação da suíte de integração contínua profissional no padrão GitHub Actions antes de oficializar o merge para `master`.
+  2. *Clippy & Code Smells*: Eliminar warnings de linter estrito (`-D warnings`), excessive float precision, cast redundante e formatação.
+  3. *Regressão End-to-End*: Validar offscreen snapshots, 8 expressões emocionais FACS e testes unitários de memória.
+- **Implementações Cirúrgicas Realizadas**:
+  1. *Pipeline CI/CD (`.github/workflows/ci.yml`)*:
+     - `rust-quality`: `cargo fmt --check`, `cargo clippy -- -D warnings`, `cargo test`, `cargo build --release` em ambiente Windows com cache de dependências Cargo.
+     - `python-quality`: Configuração do `uv` standalone (`astral-sh/setup-uv@v5`), compilação de sintaxe (`compileall`) e execução de testes automatizados (`unittest discover tests`).
+     - `docs-integrity`: Verificação de integridade dos arquivos de governança (`GEMINI.md`, `CHANGELOG.md`, `README.md`).
+  2. *Refatoração de Linters Rust*:
+     - `ply_loader.rs`: Ajuste da constante `SH_C0` para precisão `0.282_094_8` adequada a `f32`.
+     - `renderer.rs`: Adicionada anotação `#[allow(clippy::too_many_arguments)]` em `render_expression_view` e modernizado padding com `.div_ceil(align)`.
+     - `main.rs`: Removidos casts desnecessários `as isize` em handles Win32, corrigida inicialização de `cur_expr` com struct update syntax e adotado `blink_counter.is_multiple_of(5)`.
+     - Aplicado `cargo fmt` padrão oficial em todo o crate `isabella-core`.
+  3. *Correção de Sintaxe Python*:
+     - `check_live2d_api.py`: Substituído ternário inválido em declaração `import` por bloco canônico `try/except ImportError`.
+- **Resultados de Verificação e Regressão**:
+  - `cargo clippy -- -D warnings`: Aprovado com zero advertências (`0 errors, 0 warnings`).
+  - `cargo fmt --check`: 100% em conformidade.
+  - `cargo test`: Executado com sucesso.
+  - `cargo build --release`: Compilação binária otimizada em 5.63s.
+  - `isabella-core.exe --snapshot`: Renderizado snapshot offscreen de 595 KB sem erros.
+  - `isabella-core.exe --test-emotions`: Bateria completa das 8 expressões FACS aprovada.
+  - `uv run python -m unittest discover tests`: 5/5 testes unitários de memória aprovados.
+  - `uv run python -m compileall scripts tests`: 100% dos scripts sintaticamente válidos.
+
 ## [2026-11-09 08:00:00] - Implementação do Subsistema de Memória Multi-Sessão (HippoRAG 2 + Contextual FTS5) e Janela Elástica de Contexto
 - **Branch Ativa**:
   - `origin/test/voice-omnivoice-clone`
