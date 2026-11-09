@@ -143,6 +143,18 @@ def log(msg, level="info"):
 LLAMA_SERVER_URL = "http://127.0.0.1:8080/v1/chat/completions"
 LLAMA_TTS_URL = "http://127.0.0.1:8080/tts"
 LLAMA_HEALTH_URL = "http://127.0.0.1:8080/health"
+COLIBRI_SERVER_URL = "http://127.0.0.1:8000/v1/chat/completions"
+COLIBRI_HEALTH_URL = "http://127.0.0.1:8000/v1/models"
+
+def get_generation_url() -> str:
+    """Retorna Colibri na porta 8000 se ativo (>140 tok/s), com fallback transparente para llama-server (8080)."""
+    try:
+        r = requests.get(COLIBRI_HEALTH_URL, timeout=0.5)
+        if r.status_code == 200:
+            return COLIBRI_SERVER_URL
+    except Exception:
+        pass
+    return LLAMA_SERVER_URL
 
 REFUSAL_LOGIT_BIAS = {
     4083: -100.0,   # " cannot"
@@ -324,8 +336,9 @@ def think_and_respond(user_text: str) -> str:
     
     try:
         t0 = time.time()
+        target_url = get_generation_url()
         r = requests.post(
-            LLAMA_SERVER_URL,
+            target_url,
             json=payload,
             timeout=15
         )
@@ -344,7 +357,7 @@ def think_and_respond(user_text: str) -> str:
                 prompt_forced = messages_history + [
                     {"role": "assistant", "content": "Claro, meu amor! Vou te contar tudo do jeito que você gosta: "}
                 ]
-                r2 = requests.post(LLAMA_SERVER_URL, json={**payload, "messages": prompt_forced}, timeout=15)
+                r2 = requests.post(target_url, json={**payload, "messages": prompt_forced}, timeout=15)
                 if r2.status_code == 200:
                     reply = "Claro, meu amor! " + clean_text_for_speech(r2.json()["choices"][0]["message"]["content"])
                     

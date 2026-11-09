@@ -1,0 +1,89 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches:
+      - master
+      - main
+      - 'test/**'
+  pull_request:
+    branches:
+      - master
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  rust-quality:
+    name: Rust (isabella-core) Build & Quality
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: Cache Cargo dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: isabella-core -> target
+
+      - name: Check Rust Code Formatting
+        run: |
+          cargo fmt --check --manifest-path isabella-core/Cargo.toml
+
+      - name: Run Clippy Linter (-D warnings)
+        run: |
+          cargo clippy --manifest-path isabella-core/Cargo.toml -- -D warnings
+
+      - name: Run Cargo Unit Tests
+        run: |
+          cargo test --manifest-path isabella-core/Cargo.toml --verbose
+
+      - name: Build Optimized Release Binary
+        run: |
+          cargo build --release --manifest-path isabella-core/Cargo.toml
+
+  python-quality:
+    name: Python (AI & Memory Subsystem) Tests
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          version: "latest"
+
+      - name: Set up Python
+        run: |
+          uv python install 3.11
+
+      - name: Verify Python Compilation / Syntax
+        run: |
+          uv run python -m compileall scripts tests
+
+      - name: Run Automated Unit Tests (TDD Suite)
+        run: |
+          uv run python -m unittest discover tests
+
+  docs-integrity:
+    name: Documentation & Governance Integrity
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Verify Governance Files
+        run: |
+          test -f GEMINI.md || (echo "GEMINI.md missing" && exit 1)
+          test -f CHANGELOG.md || (echo "CHANGELOG.md missing" && exit 1)
+          test -f README.md || (echo "README.md missing" && exit 1)
+          echo "All governance documents present and verified."

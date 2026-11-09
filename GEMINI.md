@@ -6,29 +6,35 @@ Este documento é a fonte de verdade absoluta para o projeto **Isabella Desktop*
 
 ## 1. Visão Geral e Arquitetura do Sistema
 
-O **Isabella Desktop** é um companion interativo de área de trabalho para Windows 11, executado **100% localmente**, baseado em **3D Gaussian Splatting (3DGS)** fotorealista com deformação em GPU (WGPU/WGSL), transparência Win32 sem bordas, rastreamento global do cursor do mouse, escuta contínua de voz (Whisper STT), síntese de fala com voz feminina ultranatural (Kokoro TTS), inteligência conversacional sem censura (Ollama Gemma 4 Uncensored) e expressões emocionais sincronizadas (FACS + Cinemática Cervical 3D).
+O **Isabella Desktop** é um companion interativo de área de trabalho para Windows 11, executado **100% localmente**, baseado em **3D Gaussian Splatting (3DGS)** fotorealista com deformação em GPU (WGPU/WGSL), transparência Win32 DWM sem bordas, rastreamento global do cursor do mouse, ingestão de voz com VAD de baixa latência, inferência neural em streaming de altíssima velocidade (>100 tok/s via Colibri CUDA / llama.cpp no drive NVMe interno `D:`), síntese de fala com clonagem acústica em GPU (OmniVoice Diffusion num_step=16 a 24 kHz) e expressões emocionais sincronizadas (FACS + Cinemática Cervical 3D).
 
 ```
                       +------------------------------------------+
                       |       Microfone do Usuário (VAD)        |
                       +--------------------+---------------------+
                                            |
-                                           v
+                                           v (Áudio PCM 16kHz)
                       +------------------------------------------+
-                      |     Faster-Whisper (STT CPU int8)        |
+                      |      ASR / Ingestão Fonética Rápida      |
+                      |   (Conformer Causal / Faster-Whisper)    |
                       +--------------------+---------------------+
                                            |
-                                           v
+                                           v (Texto do Usuário)
                       +------------------------------------------+
-                      | Ollama LLM (Gemma-4-E2B Uncensored Q8_0) |
+                      |   Motor Neural Streaming (NVMe D:)       |
+                      |   - JustVugg/Colibri v2.1.0 (CUDA >100t/s|
+                      |   - llama-server CUDA 12.4 (LFM3-Omni)   |
+                      |   - Host: D:\isabella-desktop\assets\    |
                       +--------------------+---------------------+
                                            |
                     +----------------------+----------------------+
-                    |                                             |
-                    v (Texto)                                     v (Classificação)
+                    | (SSE Token Stream)                          | (Classificação Léxica)
+                    v                                             v
        +-------------------------+                   +-------------------------+
-       |   Kokoro TTS (ONNX)     |                   | Emotion Detector (FACS) |
-       |  Voz: pf_dora (PT-BR)   |                   | Joy, Anger, Smirk, etc. |
+       | OmniVoice TTS (GPU 24k) |                   | Emotion Detector (FACS) |
+       | - Prompt Acústico VRAM  |                   | 8 Estados Emocionais    |
+       | - Pipelining 3 Estágios |                   | Joy, Smirk, Anger, etc. |
+       | (Alt: Kokoro ONNX CPU)  |                   |                         |
        +------------+------------+                   +------------+------------+
                     |                                             |
                     v (Áudio PCM 24kHz)                           |
@@ -50,7 +56,7 @@ O **Isabella Desktop** é um companion interativo de área de trabalho para Wind
    +-------------------------+                           +-------------------------+
    |   WGPU Vertex Shader    |                           |  Win32 Window Overlay   |
    |   - EWA 3DGS Projection |                           |  - DWM PreMult Alpha    |
-   |   - C1 FACS Deformers   |                           |  - Docking Taskbar      |
+   |   - C1 FACS Deformers   |                           |  - Taskbar Docking      |
    |   - Cervical Kinematics |                           |  - Drag-and-Drop & Zoom |
    +-------------------------+                           +-------------------------+
 ```
@@ -83,6 +89,11 @@ O **Isabella Desktop** é um companion interativo de área de trabalho para Wind
    - 8 estados emocionais integrados: **Neutro**, **Alegria (Joy)**, **Smirk / Provocante**, **Surpresa / Curiosa**, **Tristeza / Dengo**, **Medo / Chocada**, **Raiva / Tensa**, **Nojo / Desdém**.
    - Deformadores em envelope contínuo $C^1$ (sem quebra de malha) aliados à cinemática cervical 3D (Roll, Pitch, Yaw).
    - Teclas de atalho `F1`–`F8` e injeção automática pelo Voice Bridge via análise léxica das respostas do LLM.
+6. **Subconjunto de Memória Persistente Multi-Sessão e Janela Elástica (2026)**:
+   - **Dual Engine de Recuperação**: HippoRAG 2 (Personalized PageRank em grafo hipocampal bipartite em <15 ms) + Contextual FTS5 BM25 com prefixos contextuais.
+   - **Orquestração Elástica de Contexto**: Janela dinâmica de 2.048 a 8.192 tokens com gating estrito por fronteiras semânticas de diálogo, eliminando degradações de velocidade na GPU.
+   - **Consolidação em Sleep-Time**: Processamento em background de diálogos ociosos via `SleepDreamer`, extraindo triplas e sinapses associativas.
+   - **Observabilidade**: Trilha de proveniência completa (Path Trace), PRA (100%), SAC (100%), e velocidade sustentada de 146,5 tok/s (pico de 193,0 tok/s).
 
 ---
 
@@ -110,6 +121,18 @@ Qualquer alteração futura no código deve respeitar rigorosamente os seguintes
 
 ### ⚠️ Erro Crítico 5: Gerenciador de Pacotes Python
 - **Regra Absoluta**: Utilizar estritamente o `uv` (`uv run`, `uv add`) como executável standalone externo, nunca instalando pacotes de forma ad-hoc ou dependendo de ambientes corrompidos.
+
+### ⚠️ Lição Crítica 6: Armazenamento NVMe Interno vs SSD USB Externo para LLM
+- **Falha/Descoberta**: Modelos de linguagem executados via drive externo conectado por USB-C (Drive `E:`) sofrem gargalo severo de barramento: ~852 MB/s sequencial unbuffered e latência +49% maior (281.4 µs) em relação ao SSD NVMe interno (Drive `D:`, 1.841 MB/s, 200.3 µs, e Drive `C:`, 2.080 MB/s, 188.9 µs). Isso dobra o tempo de carga dos tensores e penaliza page faults de memória mapeada.
+- **Regra Absoluta**: Todos os pesos e contêineres de modelos neurais em produção (`.gguf`, `.colibri`, `mmproj`) devem residir obrigatoriamente dentro do projeto no drive NVMe interno `D:\isabella-desktop\assets\models\`.
+
+### ⚠️ Lição Crítica 7: Concorrência de VRAM e Cores CUDA entre LLM e TTS
+- **Falha/Descoberta**: Em GPUs de consumo com 6GB de VRAM (NVIDIA RTX 3060 Laptop), executar simultaneamente a decodificação do LLM e a síntese por difusão do OmniVoice TTS (`num_step=16`) na mesma GPU (`cuda:0`) causa disputa crítica de núcleos CUDA, reduzindo a vazão de decodificação de **107.5 tok/s** para **23.9 tok/s**.
+- **Regra Absoluta**: Para manter velocidade sustentada >100 tok/s, a síntese de áudio pesada deve ser amortizada, executada com menor número de passos (`num_step=8`), ou delegada a motor ultrarrápido (ex: Kokoro ONNX em CPU/GPU) durante a geração de tokens.
+
+### ⚠️ Lição Crítica 8: Gestão de Memória Multi-Hop e Escala de Sessões Longas
+- **Falha/Descoberta**: Alimentar todo o histórico de conversas no KV Cache leva a saturação de memória (>1.0 GiB a 87k tokens, colapso de velocidade para 3.5 tok/s a 128k e queda do CUDA a 174k). Além disso, busca vetorial simples por similaridade de cosseno (Vector RAG) sofre de visão de túnel e falha quando fatos estão dispersos entre sessões diferentes.
+- **Regra Absoluta**: Utilizar arquitetura híbrida **HippoRAG 2 + Contextual FTS5 BM25** associada a **Janela Elástica com Gating Semântico** (2k-8k tokens). A compactação de contexto só deve ocorrer em fronteiras naturais de tópico ou silêncio, e a busca multi-hop deve ser resolvida via Personalized PageRank (PPR) no grafo em SQLite (<15ms), mantendo o KV Cache leve na GPU e velocidade >140 tok/s.
 
 ---
 
@@ -214,6 +237,27 @@ O sistema de síntese de fala opera via ONNX de alta performance (`kokoro-onnx`)
 
 ---
 
+### Workflow E: Inferência Extrema de LLM (>100 tok/s) com Colibri e Llama.cpp
+
+1. **Configuração de Alta Performance do JustVugg/Colibri (v2.1.0)**:
+   - Para alcançar **>100 tok/s** no modelo `LFM3-Audio-2B` em GPU NVIDIA RTX 3060:
+     - Utilize o backend nativo CUDA (`COLI_CUDA=1`), desativando o Vulkan.
+     - Ative a decodificação especulativa por consulta de n-gramas (`COLI_LOOKUP=1` com gating adaptativo `COLI_SPEC_GATE=1`).
+     - Alinhe o contexto a `--ctx 2048` e adicione `--policy experimental-fast`.
+     - Desative a emissão de blocos de raciocínio `<think>` passando `"enable_thinking": False` na requisição ou `--no-think` no runtime (reduz TTFT verbal para ~60ms).
+   - Comando de execução de alta performance:
+     ```powershell
+     $env:COLI_CUDA="1"; $env:COLI_LOOKUP="1"; $env:COLI_SPEC_GATE="1"; $env:COLI_CUDA_CHAIN_ROWS="4096"; $env:Q36_KV="f16"
+     & "C:\Users\thiag\AppData\Local\colibri\runtime\colibri-v2.1.0\coli.cmd" serve --model "D:\isabella-desktop\assets\models\LFM3-Audio-2B-Q4_K_M.colibri" --port 8000 --ctx 2048 --policy experimental-fast --no-think
+     ```
+2. **Execução de Alta Performance do llama.cpp (CUDA)**:
+   - O executável oficial otimizado com CUDA fica em `tools\llama-cpp\llama-server.exe`:
+     ```powershell
+     .\tools\llama-cpp\llama-server.exe -m assets\models\LFM3-Audio-2B-Q4_K_M.gguf --mmproj assets\models\mmproj-LFM3-Audio-2B-Q8_0.gguf -ngl 99 -fa auto -np 1 -c 2048 --jinja --reasoning off --no-reasoning-preserve --port 8080
+     ```
+
+---
+
 ## 5. Mapeamento da Estrutura de Diretórios
 
 ```
@@ -234,25 +278,44 @@ D:\isabella-desktop\
 │       └── shader.wgsl          # Vertex shader EWA 3DGS, deformadores FACS e cinemática
 │
 ├── scripts\                     # Pipelines Python de suporte e IA
-│   ├── voice_bridge.py          # Listener contínuo: VAD + ASR + TTS + UDP
+│   ├── memory\                  # Subsistema de memória persistente e multi-hop (2026)
+│   │   ├── __init__.py          # Exportação do pacote de memória
+│   │   ├── hipporag_engine.py   # Grafo hipocampal e Personalized PageRank (PPR)
+│   │   ├── contextual_fts5.py   # Busca léxica contextualizada BM25 via SQLite FTS5
+│   │   ├── elastic_window.py    # Orquestrador de contexto elástico (2k-8k tok) e gating
+│   │   ├── sleep_dreamer.py     # Consolidação desacoplada em tempo de ociosidade
+│   │   └── memory_observer.py   # Logger de proveniência (Path Trace) e métricas PRA/SAC/TOS
+│   ├── benchmark_multisession_memory.py # Benchmark científico de memória multi-sessão
+│   ├── benchmark_llamacpp_vs_colibri.py # Benchmark científico completo (Llama vs Colibri)
+│   ├── benchmark_colibri_3_ssds.py     # Benchmark comparativo de armazenamento em 3 SSDs
+│   ├── voice_bridge.py          # Listener contínuo: VAD + ASR + TTS Kokoro + UDP
+│   ├── voice_bridge_omnivoice.py# Listener com síntese OmniVoice e watchdog neural
 │   ├── voice_test.py            # Testador interativo de streaming e visemas
 │   ├── setup_llamacpp.py        # Instalador automatizado do backend llama.cpp CUDA
 │   ├── run_local_idol.py        # Pipeline de reconstrução 3D neural (DINOv3 + FLUX.2 VAE)
 │   └── apply_uv_texture_3dgs.py # Otimização Powell de projeção UV e micro-densificação
 │
+├── tests\                       # Bateria de testes unitários automatizados (TDD / XP)
+│   └── test_memory_system.py    # Validação do subsistema de memória (5 suites)
+│
 ├── assets\                      # Recursos binários e modelos
-│   ├── models\                  # Nuvens de gaussianas (.ply) e pesos neurais DINOv3
-│   │   ├── isabella_bust_4x_1m.ply # Modelo HD de produção (1.048.576 splats)
-│   │   └── dinov3_vith16plus_hf/   # Pesos locais DINOv3 ViT-H/16+
+│   ├── models\                  # Nuvens de gaussianas (.ply) e modelos neurais locais (NVMe D:)
+│   │   ├── isabella_bust_4x_1m.ply         # Modelo HD de produção (1.048.576 splats)
+│   │   ├── LFM3-Audio-2B-Q4_K_M.colibri    # Contêiner nativo Colibri v2.1.0 (NVMe D:)
+│   │   ├── LFM3-Audio-2B-Q4_K_M.gguf       # Pesos GGUF Q4_K_M para llama-server (NVMe D:)
+│   │   ├── mmproj-LFM3-Audio-2B-Q8_0.gguf  # Projetor multimodal áudio/visão (NVMe D:)
+│   │   └── dinov3_vith16plus_hf/           # Pesos locais DINOv3 ViT-H/16+
 │   ├── references\              # Fotografias de referência 4X de entrada
-│   ├── renders\                 # Snapshots de auditoria, multiview e testes FACS
-│   └── voices\                  # Modelos Kokoro ONNX e vozes binárias
+│   ├── renders\                 # Snapshots de auditoria, multiview e benchmarks
+│   └── voices\                  # Modelos Kokoro ONNX, prompts de clonagem OmniVoice
+│       ├── isabella_omnivoice_prompt.pt    # Prompt latente de voz da Isabella (OmniVoice)
 │       └── kokoro\
 │           ├── kokoro-v1.0.onnx # Modelo ONNX de síntese neural
 │           └── voices-v1.0.bin  # Conjunto de vozes (pf_dora, etc.)
 │
 ├── tools\                       # Binários de suporte e infraestrutura local
-│   └── llama-cpp\               # Binários CUDA e DLLs do llama-server (gerado via setup)
+│   ├── colibri\                 # Repositório clonado e fontes de tuning do JustVugg/colibri
+│   └── llama-cpp\               # Binários CUDA e DLLs do llama-server
 │
 ├── backups\                     # Arquivo histórico de backups (ignorado no Git)
 │   ├── changelogs\              # Histórico de CHANGELOG.md.bak_*
@@ -261,7 +324,9 @@ D:\isabella-desktop\
 │   └── scripts\                 # Backups de scripts Python
 │
 └── logs\                        # Registros de depuração em runtime
-    └── voice_bridge.log         # Log de conversas e estados da IA
+    ├── benchmark_llama_server.log   # Log de execução do llama-server
+    ├── benchmark_colibri_server.log # Log de execução do Colibri
+    └── voice_bridge.log             # Log de conversas e estados da IA
 ```
 
 ---

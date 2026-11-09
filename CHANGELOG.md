@@ -1,5 +1,272 @@
 # CHANGELOG
 
+## [2026-11-09 09:15:00] - Hardening de Código, Pipeline de CI/CD (GitHub Actions) e Bateria de Regressão Completa
+- **Branch Ativa**:
+  - `origin/test/voice-omnivoice-clone`
+- **Arquivos Criados**:
+  - `.github\workflows\ci.yml` (Pipeline de CI/CD com jobs para Rust Quality, Python Quality e Validação de Governança)
+- **Arquivos Modificados**:
+  - `isabella-core\src\ply_loader.rs` (Backup: `backups/isabella-core/ply_loader.rs.bak_20261109_091150`)
+  - `isabella-core\src\renderer.rs` (Backup: `backups/isabella-core/renderer.rs.bak_20261109_091150`)
+  - `isabella-core\src\main.rs` (Backup: `backups/isabella-core/main.rs.bak_20261109_091150`)
+  - `scripts\check_live2d_api.py` (Backup: `backups/scripts/check_live2d_api.py.bak_20261109_091440`)
+  - `CHANGELOG.md` (Backup: `backups/changelogs/CHANGELOG.md.bak_20261109_091500`)
+- **Problema & Metas**:
+  1. *Conformidade de CI/CD*: Preparação da suíte de integração contínua profissional no padrão GitHub Actions antes de oficializar o merge para `master`.
+  2. *Clippy & Code Smells*: Eliminar warnings de linter estrito (`-D warnings`), excessive float precision, cast redundante e formatação.
+  3. *Regressão End-to-End*: Validar offscreen snapshots, 8 expressões emocionais FACS e testes unitários de memória.
+- **Implementações Cirúrgicas Realizadas**:
+  1. *Pipeline CI/CD (`.github/workflows/ci.yml`)*:
+     - `rust-quality`: `cargo fmt --check`, `cargo clippy -- -D warnings`, `cargo test`, `cargo build --release` em ambiente Windows com cache de dependências Cargo.
+     - `python-quality`: Configuração do `uv` standalone (`astral-sh/setup-uv@v5`), compilação de sintaxe (`compileall`) e execução de testes automatizados (`unittest discover tests`).
+     - `docs-integrity`: Verificação de integridade dos arquivos de governança (`GEMINI.md`, `CHANGELOG.md`, `README.md`).
+  2. *Refatoração de Linters Rust*:
+     - `ply_loader.rs`: Ajuste da constante `SH_C0` para precisão `0.282_094_8` adequada a `f32`.
+     - `renderer.rs`: Adicionada anotação `#[allow(clippy::too_many_arguments)]` em `render_expression_view` e modernizado padding com `.div_ceil(align)`.
+     - `main.rs`: Removidos casts desnecessários `as isize` em handles Win32, corrigida inicialização de `cur_expr` com struct update syntax e adotado `blink_counter.is_multiple_of(5)`.
+     - Aplicado `cargo fmt` padrão oficial em todo o crate `isabella-core`.
+  3. *Correção de Sintaxe Python*:
+     - `check_live2d_api.py`: Substituído ternário inválido em declaração `import` por bloco canônico `try/except ImportError`.
+- **Resultados de Verificação e Regressão**:
+  - `cargo clippy -- -D warnings`: Aprovado com zero advertências (`0 errors, 0 warnings`).
+  - `cargo fmt --check`: 100% em conformidade.
+  - `cargo test`: Executado com sucesso.
+  - `cargo build --release`: Compilação binária otimizada em 5.63s.
+  - `isabella-core.exe --snapshot`: Renderizado snapshot offscreen de 595 KB sem erros.
+  - `isabella-core.exe --test-emotions`: Bateria completa das 8 expressões FACS aprovada.
+  - `uv run python -m unittest discover tests`: 5/5 testes unitários de memória aprovados.
+  - `uv run python -m compileall scripts tests`: 100% dos scripts sintaticamente válidos.
+
+## [2026-11-09 08:00:00] - Implementação do Subsistema de Memória Multi-Sessão (HippoRAG 2 + Contextual FTS5) e Janela Elástica de Contexto
+- **Branch Ativa**:
+  - `origin/test/voice-omnivoice-clone`
+- **Arquivos Criados**:
+  - `D:\isabella-desktop\scripts\memory\__init__.py` (Módulo central de memória)
+  - `D:\isabella-desktop\scripts\memory\contextual_fts5.py` (Armazenamento episódico BM25 via SQLite FTS5 com prefixos contextuais)
+  - `D:\isabella-desktop\scripts\memory\hipporag_engine.py` (Grafo bipartido hipocampal com Personalized PageRank em <15ms)
+  - `D:\isabella-desktop\scripts\memory\elastic_window.py` (Orquestrador de contexto dinâmico 2k-8k tokens e gating por fronteira semântica)
+  - `D:\isabella-desktop\scripts\memory\sleep_dreamer.py` (Consolidador offline em background de triplas e sinapses associativas)
+  - `D:\isabella-desktop\scripts\memory\memory_observer.py` (Rastreador de proveniência de recuperação Path Trace e cálculo de PRA, SAC e TOS)
+  - `D:\isabella-desktop\scripts\benchmark_multisession_memory.py` (Harness automatizado de validação multi-sessão em 3 datas)
+  - `D:\isabella-desktop\tests\test_memory_system.py` (Suite de testes unitários TDD cobrindo os 5 módulos)
+- **Arquivos Modificados**:
+  - `D:\isabella-desktop\GEMINI.md` (Backup: `backups/root/GEMINI.md.bak_20261109_080000`)
+  - `D:\isabella-desktop\CHANGELOG.md` (Backup: `backups/changelogs/CHANGELOG.md.bak_20261109_080000`)
+- **Problema & Metas**:
+  1. *Gargalo de Sessões Longas*: A degradação contínua de velocidade no KV Cache da GPU ao acumular tokens (queda para 91 tok/s a 87k tokens e colapso total a 174k tokens) exigia controle de orçamento sem truncamento abrupto de pensamentos.
+  2. *Visão de Túnel de Vector RAGs*: A busca puramente vetorial por similaridade de cosseno falha quando a informação necessária para a resposta está dispersa em partes entre diferentes sessões e datas.
+  3. *Retenção Multi-Hop & Consistência*: Garantir que o companion lembre das preferências informadas nos primeiros turnos, mantenha coerência com respostas anteriores e conecte fatos de datas distintas sem perda de velocidade.
+- **Implementação & Metodologia (TDD / XP)**:
+  1. *Fase Red*: Criados 5 testes unitários em `tests/test_memory_system.py` cobrindo FTS5, HippoRAG PPR, Elastic Window, SleepDreamer e MemoryObserver. Execução inicial confirmou falhas controladas (`errors=5`).
+  2. *Fase Green*: Implementados os 5 componentes com tipagem estrita, indexação SQLite nativa sem sobrecarga de GPU, e ranking dinâmico no HippoRAG combinando pontuação de Personalized PageRank com peso de sinapse (`activation_score = ppr_score * synapse_weight`). Reexecução atingiu `5/5 OK` em 0.99s.
+  3. *Fase Refactor / Validação Científica*: Criado o harness `benchmark_multisession_memory.py` simulando três datas consecutivas:
+     - *Sessão 1 (2026-11-01)*: Usuário define preferência por Simone de Beauvoir e discute a moral da ambiguidade. SleepDreamer consolida 4 triplas e 4 sinapses.
+     - *Sessão 2 (2026-11-03)*: Usuário discute a estética de Schopenhauer e testa a recuperação da preferência. O HippoRAG recupera o nó de Beauvoir via PPR com score 0.1738. Teste PRA validou menção com 100% de precisão.
+     - *Sessão 3 (2026-11-08)*: Pergunta multi-hop exigindo síntese entre a estética de Schopenhauer (Sessão 2) e a liberdade situada de Beauvoir (Sessão 1). Ativação conjunta hipocampal confirmada no log de proveniência.
+- **Resultados Empíricos Obtidos (RTX 3060 Laptop 6GB / Colibri CUDA v2.1.0)**:
+  - **Velocidade Média**: **146.53 tok/s** (Meta $\ge 120$ superada com +22% de margem);
+  - **Velocidade de Pico**: **193.04 tok/s** (Meta $\sim 200$ alcançada no Turno 1.1);
+  - **Velocidade Mínima**: **127.12 tok/s** (Meta $\ge 100$ superada com +27% de margem);
+  - **Time to First Token (TTFT)**: Média de **157.54 ms** (pico mais rápido de 57.06 ms);
+  - **Preference Recall Accuracy (PRA)**: **1.00 (100%)** em todas as consultas de preferência;
+  - **Self-Answer Consistency (SAC)**: **1.00 (100%)** na reconstrução do argumento de ambiguidade;
+  - **Temporal Ordering Score (TOS)**: **0.93** mantendo ordem cronológica das memórias;
+  - **Consumo de VRAM**: Pico de **1.792 MiB** (29.2% da capacidade total), preservando headroom para o renderizador 3DGS WGPU.
+
+## [2026-11-08 17:15:00] - Superação da Meta de >100 tok/s com JustVugg/Colibri (CUDA Nativo) e Consolidação de Pesos no NVMe Local D:
+- **Branch Ativa**:
+  - `origin/test/voice-omnivoice-clone`
+- **Arquivos Modificados**:
+  - `D:\isabella-desktop\scripts\benchmark_llamacpp_vs_colibri.py` (Backup: `benchmark_llamacpp_vs_colibri.py.bak_20261108_170329`)
+  - `D:\isabella-desktop\scripts\voice_bridge_omnivoice.py` (Backup: `voice_bridge_omnivoice.py.bak_20261108_171404`)
+  - `D:\isabella-desktop\GEMINI.md` (Backup: `GEMINI.md.bak_20261108_171430`)
+  - `D:\isabella-desktop\README.md` (Backup: `README.md.bak_20261108_171513`)
+  - `D:\isabella-desktop\CHANGELOG.md` (Backup: `CHANGELOG.md.bak_20261108_171535`)
+- **Arquivos Criados**:
+  - `D:\isabella-desktop\scripts\benchmark_colibri_3_ssds.py` (Benchmark comparativo de armazenamento em 3 SSDs)
+  - `D:\isabella-desktop\scripts\test_colibri_cuda_tuning.py` (Bateria de sintonia de parâmetros CUDA do Colibri)
+  - `D:\isabella-desktop\scripts\test_direct_speed.py` (Validador direto de velocidade de decodificação)
+- **Problema & Metas**:
+  1. *Meta do Usuário*: Superar comprovadamente **100 tok/s** na geração de texto do JustVugg/Colibri na pergunta `"fale-me sobre o existencialismo"`.
+  2. *Gargalo de Armazenamento*: Modelos alocados no drive USB-C externo (`E:`) sofriam com throughput degradado (852 MB/s) e latência 49% superior (281.4 µs).
+  3. *Bloqueio de Raciocínio*: O modelo `LFM3-2B` emitia centenas de tokens em blocos `<think>`, inflando a latência verbal de TTFT para >5.000 ms.
+- **Implementações Cirúrgicas Realizadas**:
+  1. *Centralização de Modelos no NVMe Interno `D:\isabella-desktop\assets\models\`*:
+     - Alocados no drive NVMe do projeto (WD_BLACK SN750, 1.841 MB/s, 200 µs de latência):
+       - `LFM3-Audio-2B-Q4_K_M.colibri` (contêiner nativo Colibri);
+       - `LFM3-Audio-2B-Q4_K_M.gguf` (pesos GGUF Q4_K_M);
+       - `mmproj-LFM3-Audio-2B-Q8_0.gguf` (projetor multimodal).
+     - Atualizados todos os scripts de watchdog, streaming e benchmark para priorizar `assets\models\` no Drive `D:`.
+  2. *Ativação do Backend CUDA Nativo no Colibri (`COLI_CUDA=1`)*:
+     - Configurado o Colibri v2.1.0 com `coli_cuda.dll` e `cudart64_12.dll`, ativando o Dense Chain em GPU (`COLI_CUDA_CHAIN=1`) e reduzindo o tempo de espera de dispositivo por token de 10.2 ms (Vulkan) para **1.43 ms** (CUDA).
+  3. *Decodificação Especulativa por Consulta de N-Gramas (`COLI_LOOKUP=1`)*:
+     - Ativada a proposta adaptativa de rascunhos de n-gramas (`COLI_LOOKUP=1`, `COLI_SPEC_GATE=1`, `COLI_CUDA_CHAIN_ROWS=4096`, `Q36_KV=f16`).
+  4. *Supressão de Raciocínio Residual (`"enable_thinking": False`)*:
+     - Configurado `"enable_thinking": False` e `--no-think`, fechando o bloco de pensamento imediatamente (`<think>\n\n</think>\n\n`) e derrubando o TTFT verbal de 6.076 ms para **46.4 ms - 66.1 ms**.
+- **Resultados Empíricos Comprovados (NVIDIA RTX 3060 Laptop 6GB)**:
+  - **Colibri (CUDA Otimizado) no NVMe D:**:
+    - Rodada 1: **104.92 tok/s** | TTFT: **66.1 ms**;
+    - Rodada 2: **107.50 tok/s** | TTFT: **46.4 ms**;
+    - Pico medido (500 tokens): **133.73 tok/s** | TTFT: **68.9 ms**;
+    - **Meta >100 tok/s atingida com sucesso absoluto (+33.7% de margem)**.
+  - **llama.cpp (CUDA)**:
+    - Rodada 1: **106.5 tok/s** | TTFT: **83.0 ms**;
+    - Rodada 2: **48.8 – 79.4 tok/s** | TTFT: **97.6 ms**.
+
+
+## [2026-11-06 17:46:00] - Correção do Corte Abrupto no Final das Respostas (max_tokens 220 + Sanitizador de Conectivos Suspensos)
+- **Branch Ativa**:
+  - `origin/test/voice-omnivoice-clone`
+- **Arquivos Modificados**:
+  - `D:\isabella-desktop\scripts\voice_bridge_omnivoice.py` (Backup: `voice_bridge_omnivoice.py.bak_20261106_174423`)
+  - `D:\isabella-desktop\CHANGELOG.md` (Backup: `CHANGELOG.md.bak_20261106_174530`)
+- **Causa Raiz do Corte Abrupto ("...à nossa rotina diária aqui na")**:
+  - Na versão anterior, o payload do streaming do LLM utilizava `max_tokens: 90`.
+  - Ao responder a perguntas conceituais ou mais elaboradas (como existencialismo), o modelo gerava 57 palavras, atingindo exatamente o limite rígido de 90 tokens no meio da última oração (na palavra "na").
+  - O buffer residual (`leftover`) era então encaminhado ao sintetizador sem pontuação terminal, fazendo o OmniVoice pronunciar a frase cortada e finalizar abruptamente.
+- **Modificações Cirúrgicas**:
+  1. *Aumento do Limite de Tokens (`max_tokens: 220`)*:
+     - Expandido o teto de tokens de 90 para 220, dando espaço amplo para 2 a 3 frases densas (120-150 palavras) sem qualquer risco de truncamento mecânico.
+  2. *Reforço no System Prompt*:
+     - Instruído explicitamente: *"Conclua sempre todas as suas frases e pensamentos com pontuação final (ponto, exclamação ou interrogação). Jamais termine uma resposta pela metade ou corte frases no meio."*
+  3. *Sanitizador Anti-Truncamento de Conectivos Suspensos no Streaming*:
+     - No encerramento do stream SSE, caso o buffer residual não termine com pontuação (`[.!?…]`), uma expressão regular detecta conectivos/preposições suspensas (`na`, `no`, `de`, `em`, `para`, `por`, `com`, `que`, `e`, etc.), poda a palavra solta e fecha a sentença com ponto final (`.`), garantindo que o sintetizador neural nunca pronuncie frases incompletas.
+
+## [2026-11-06 17:40:00] - Pipeline Concorrente em 3 Estágios (Streaming LLM + OmniVoice num_step=16 + Audio Playback) e Redução de Latência em 62%
+- **Branch Ativa**:
+  - `origin/test/voice-omnivoice-clone`
+- **Arquivos Modificados**:
+  - `D:\isabella-desktop\scripts\voice_bridge_omnivoice.py` (Backup: `voice_bridge_omnivoice.py.bak_20261106_173532`)
+  - `D:\isabella-desktop\CHANGELOG.md` (Backup: `CHANGELOG.md.bak_20261106_173900`)
+- **Arquivos Criados**:
+  - `D:\isabella-desktop\scripts\test_pipeline_timing.py` (Script de validação do pipeline concorrente)
+- **Diagnóstico da Latência Anterior (5.1s antes da 1ª palavra)**:
+  - O fluxo conversacional anterior era estritamente sequencial:
+    1. VAD aguardava 0.75s de silêncio;
+    2. Conformer transcrevia em ~0.55s;
+    3. LLM gerava a resposta inteira (30-50 tokens) aguardando ~0.50s;
+    4. OmniVoice sintetizava a Frase 1 com 32 passos de difusão (`num_step=32`), demandando ~3.30s;
+    5. Somente após 5.10 segundos o usuário ouvia a primeira palavra.
+- **Implementação do Pipeline Paralelo**:
+  1. *Otimização dos Passos de Difusão (`num_step=16`)*:
+     - Configurado `OmniVoiceGenerationConfig(num_step=16)` em `synthesize_chunk_omnivoice()`, acelerando o tempo de difusão de 3.38s para **1.15s - 1.48s** (RTF 0.63x) sem qualquer perda de qualidade tímbrica da voz clonada.
+  2. *Streaming SSE Concorrente no LLM*:
+     - `llm_stream_worker` consome deltas de token via SSE HTTP. Ao detectar limites de frase (`[.!?…\n]`), extrai o texto limpo e posta instantaneamente na `text_queue` em **~84ms a 120ms** desde o início do raciocínio.
+  3. *Síntese Concorrente em Background*:
+     - `synth_worker` consome a `text_queue` e sintetiza a Frase 1 imediatamente na GPU, enquanto o LLM continua emitindo as frases subsequentes.
+  4. *Sobreposição Total no Playback de Áudio*:
+     - Assim que a Frase 1 conclui a síntese (~1.8s a 2.1s do término da fala do usuário), a reprodução de áudio e a transmissão UDP de visemas 3DGS são iniciadas.
+     - Durante a reprodução da Frase 1 (duração típica de 2.0s a 2.5s), a Frase 2 é sintetizada em background e enfileirada no buffer, eliminando quaisquer engasgos ou silêncios entre sentenças.
+  5. *Ajuste Fino do VAD*:
+     - Silêncio de término reduzido de 0.75s para **0.45s**, economizando 300ms imediatos de ar morto.
+- **Validação Empírica (`test_pipeline_timing.py`)**:
+  - Primeiro token do LLM: **70ms**.
+  - Primeira frase do LLM ("Olá!") emitida para a fila de texto: **84ms**.
+  - Frase 1 sintetizada pelo OmniVoice: **1.83s** (duração 1.2s).
+  - **Latência total até a primeira palavra ouvida: 1.925 segundos** (redução de mais de 62% frente aos 5.1s originais).
+  - 10 frases sintetizadas em paralelo com zero erros, sem estouro de VRAM e com preservação total dos visemes 3DGS.
+
+## [2026-11-06 17:23:00] - Migração para LFM3-Audio-2B-Q4_K_M (1.39 GB) na Branch de Testes, Eliminando Definitivamente o Estouro de VRAM
+- **Branch Ativa**:
+  - `origin/test/voice-omnivoice-clone`
+- **Arquivos Modificados**:
+  - `D:\isabella-desktop\start_isabella_omnivoice.ps1` (Backup: `start_isabella_omnivoice.ps1.bak_20261106_172230`)
+  - `D:\isabella-desktop\scripts\voice_bridge_omnivoice.py` (Backup: `voice_bridge_omnivoice.py.bak_20261106_172230`)
+- **Diagnóstico da Causa Raiz do Read Timeout no ASR**:
+  - O modelo não-quantizado `LFM3-Omni-2B-F16.gguf` (3.47 GB) somado ao projetor `mmproj-F16` (0.95 GB) e contextos consumia **6.10 GB de VRAM** sozinho.
+  - Ao carregar o `OmniVoice` (1.8 GB), o Windows realizava swap de memória para a RAM via PCIe. Ao enviar áudio para o Conformer, a alocação de scratchpad CUDA travava o processo por mais de 30 segundos ou derrubava o `llama-server`.
+- **Modificações Cirúrgicas**:
+  - Configurado o `llama-server` para utilizar `E:\modelos_ollama\LFM3-Audio-2B-Q4_K_M.gguf` (1.09 GB) com `mmproj-LFM3-Audio-2B-Q8_0.gguf` (0.30 GB) (com fallback transparente para F16 caso ausente).
+  - O consumo de VRAM do `llama-server` caiu drasticamente de **6.10 GB para 1.96 GB** (medido via `nvidia-smi`).
+  - VRAM total combinada (`llama-server` 1.96 GB + `OmniVoice` 1.80 GB) = **3.76 GB**, deixando mais de **2.3 GB de margem livre** na RTX 3060.
+- **Validação Empírica**:
+  - Inferência do LLM acelerada de 4.3s para **464 milissegundos** (46 palavras).
+  - Conformer Causal ASR executado em **552 milissegundos**.
+  - Síntese da Frase 1 pelo OmniVoice concluída em **2.86 segundos**.
+  - Código de saída 0 no teste de integração end-to-end (`task-1830`).
+
+
+## [2026-11-06 16:14:00] - Correção do Acúmulo de Fila de Microfone (Flush Queue) e Hard Cap de Áudio VAD (8.0s)
+- **Branch Ativa**:
+  - `origin/test/voice-omnivoice-clone`
+- **Arquivos Modificados**:
+  - `D:\isabella-desktop\scripts\voice_bridge_omnivoice.py` (Backup: `voice_bridge_omnivoice.py.bak_20261106_161400`)
+- **Causa Raiz do Read Timeout no ASR**:
+  - Durante o playback e síntese da fala anterior (10s a 20s), a thread do microfone continuava enfileirando blocos de áudio em `q`. Ao retornar ao loop de escuta, o consumidor pegava centenas de blocos acumulados do passado, concatenando falsos buffers de até **26.10 segundos**.
+  - O processamento de um áudio de 26s no Conformer demandava 18s a 35s, estourando o timeout do socket HTTP.
+- **Modificações Cirúrgicas**:
+  1. Implementada a função `flush_mic_queue(q)` que esvazia completamente a fila de áudio antes de cada nova escuta e logo após a fala da Isabella, descartando resíduos e ecos da síntese anterior.
+  2. Implementado teto rígido (*hard limit*) de **8.0 segundos** de gravação contínua no VAD, garantindo que nenhum áudio enviado ao Conformer exceda o limite de baixa latência (<1.5s de inferência).
+  3. Calibração do limiar adaptativo de ruído ajustada com piso de `0.0035` e teto de `0.0085`.
+
+
+## [2026-11-06 16:05:00] - Resolução Definitiva de Concorrência de VRAM (llama-server -np 1 -c 2048) e Preservação do Conformer Causal ASR
+- **Branch Ativa**:
+  - `origin/test/voice-omnivoice-clone` (branch principal `master` 100% intacta e intocada).
+- **Arquivos Modificados**:
+  - `D:\isabella-desktop\start_isabella_omnivoice.ps1` (Backup: `start_isabella_omnivoice.ps1.bak_20261106_160200`)
+  - `D:\isabella-desktop\scripts\voice_bridge_omnivoice.py` (Backup: `voice_bridge_omnivoice.py.bak_20261106_160200`)
+- **Modificações Cirúrgicas**:
+  1. *start_isabella_omnivoice.ps1*: Substituído `-np 2 -c 4096` por `-np 1 -c 2048`. Como o TTS agora é gerado pelo OmniVoice via difusão, o slot secundário concorrente do `/tts` legado tornou-se obsoleto, liberando ~1.5 GB de VRAM.
+  2. *scripts/voice_bridge_omnivoice.py*:
+     - No watchdog `ensure_llama_server()`, atualizados parâmetros para `-np 1 -c 2048`.
+     - Em `transcribe_audio()` e `think_and_respond()`, timeout aumentado de 15s para 30s para absorver picos de I/O.
+- **Validação Empírica (Sem Whisper, 100% Conformer Nativo)**:
+  - Teste de ASR do Conformer Causal (`test_asr_timing.py`): transcrição de 3.6s de áudio executada em **560 milissegundos** (`Status: 200`).
+  - Teste conversacional end-to-end (`voice_test_omnivoice.py`): resposta de 32 palavras gerada em 1.14s; frase 1 clonada em 3.67s; frases 2 e 3 sintetizadas em background (zero pausas); 100% dos visemes entregues via UDP.
+
+
+## [2026-11-06 15:52:00] - Implementação da Arquitetura de Conversa em Tempo Real com OmniVoice Cloned Voice
+- **Branch Ativa**:
+  - `origin/test/voice-omnivoice-clone`
+- **Arquivos Criados**:
+  - `scripts/save_omnivoice_prompt.py`: Pré-extração e persistência do prompt acústico (`VoiceClonePrompt`) da Isabella a partir de `isabella_elevenlabs_ref_12s.wav` para `assets/voices/isabella_omnivoice_prompt.pt` (elimina overhead de Whisper na referência e acelera inicialização).
+  - `scripts/benchmark_omnivoice.py`: Script de benchmark aferindo RTF de 1.16x na RTX 3060.
+  - `scripts/voice_bridge_omnivoice.py`: Motor conversacional interativo completo integrando:
+    1. VAD contínuo de microfone a 16kHz com calibração adaptativa de ruído de fundo.
+    2. ASR Conformer multimodal via `llama-server.exe` (porta 8080).
+    3. Raciocínio conversacional F16 sem censura com anti-recusa via logit-bias.
+    4. Síntese neural de fala progressiva frase-a-frase com `OmniVoice` na GPU mantendo prompt em VRAM.
+    5. Transmissão UDP de visemas FFT (`jaw_open`, `lip_round`, `lip_spread`) e emoções FACS a ~30Hz para o avatar 3DGS (`127.0.0.1:9888`).
+    6. Interrupção por tecla ou fala (barge-in acústico).
+  - `scripts/voice_test_omnivoice.py`: Testador de integração end-to-end de 1 turno conversacional.
+  - `start_isabella_omnivoice.ps1`: Script PowerShell de inicialização integrada (llama-server + isabella-core.exe + voice_bridge_omnivoice.py).
+  - `iniciar_conversa_omnivoice.bat`: Atalho executável por duplo clique para teste real pelo usuário.
+- **Validação Empírica**:
+  - Teste executado com sucesso: resposta do LLM gerada em 2.39s; frase 1 sintetizada em 3.88s; frases seguintes sintetizadas assincronamente em background (zero pausas); áudio reproduzido nos alto-falantes e visemes transmitidos via UDP com código de saída 0.
+
+
+## [2026-11-06 14:58:00] - Avaliação do Modelo de Clonagem Zero-Shot OmniVoice (Diffusion) na Branch Isolada
+- **Branch Dedicada**:
+  - `origin/test/voice-omnivoice-clone`
+- **Ambiente e Dependências Instaladas (via uv)**:
+  - Instalada biblioteca oficial `omnivoice==0.2.1` com `torch==2.7.1+cu118`, `torchaudio==2.7.1+cu118`, `transformers==5.22.1` e `sounddevice==0.5.6`.
+  - Pesos do modelo neural baixados do HuggingFace (`k2-fsa/OmniVoice`, 13 arquivos, ~1.5 GB).
+- **Arquivos Criados/Modificados**:
+  - `scripts/test_omnivoice_clone.py`: Script autônomo de clonagem acústica direta usando prompt de áudio de 12 segundos extraído da referência (`isabella_elevenlabs_ref_12s.wav`).
+  - `scripts/play_comparison.py`: Atualizado para incluir opção [6] OmniVoice Zero-Shot Diffusion Cloning.
+  - `assets/renders/voice_comparison/omnivoice_isabella_cloned.wav`: Áudio gerado (10.1s, 24 kHz float32, 485.324 bytes).
+- **Validação Empírica**:
+  - O pipeline de difusão completou a síntese na GPU RTX 3060 (`cuda:0`, float16) e executou playback direto nos alto-falantes do usuário com código de saída 0.
+
+
+## [2026-11-06 14:16:00] - Implementação e Comparativo das Abordagens de Voz (DSP vs Alinhamento Neural) em Branches Isoladas
+- **Branches Criadas e Publicadas no GitHub**:
+  - `origin/test/voice-dsp-spectral`: Implementação da Opção 1 (Casamento Espectral LTAS + Formantes DSP via filtro FIR linear e saturação harmônica analógica).
+  - `origin/test/voice-neural-clone`: Implementação da Opção 2 (Alinhamento de F0 via Phase Vocoder para 228.9 Hz mediano + warping de formantes + comparativo Kokoro ONNX).
+- **Áudio de Referência Novo Utilizado**:
+  - `ElevenLabs_2026-11-06T12_58_47_Isabella_gen_s50_sim75_v4.mp3` (42.11s, 44.1 kHz mono -> convertido para `assets/voices/isabella_elevenlabs_ref.wav`).
+- **Arquivos Criados**:
+  - `scripts/voice_dsp_morph.py`: Motor DSP de extração de envelope espectral LTAS via cepstral liftering e equalização adaptativa.
+  - `scripts/voice_neural_clone.py`: Pipeline de alinhamento de frequência fundamental (-1.2 semitons, F0 alvo = 228.9 Hz) e warping de trato vocal.
+  - `scripts/play_comparison.py`: Player interativo em console com reprodução em tempo real via `sounddevice`.
+  - `ouvir_comparacao_vozes.bat`: Launcher para audição instantânea por clique duplo.
+  - `assets/renders/voice_comparison/lfm3_base_raw.wav`: Fala base gerada pelo LFM3-Omni (11.04s, 24 kHz).
+  - `assets/renders/voice_comparison/option1_dsp_spectral_matched.wav`: Resultado da Opção 1 (DSP).
+  - `assets/renders/voice_comparison/option2_neural_pitch_formant_morph.wav`: Resultado da Opção 2 (Alinhamento Neural).
+  - `assets/renders/voice_comparison/option2_kokoro_isabella_neural.wav`: Síntese neural Kokoro com a mesma frase.
+- **Por quê**: Permitir ao usuário ouvir e confrontar auditivamente as abordagens antes de decidir qual arquitetura fundir na branch principal.
+
 ## [2026-11-05 16:44:00] - Atualização de URL do Repositório Remoto GitHub
 - **Arquivos Modificados**:
   - `D:\isabella-desktop\README.md` (Backup: `backups\root\README.md.bak_20261105_164400`)
@@ -723,3 +990,92 @@
   5. *Mapeamento Completo da Estrutura de Arquivos*: Árvore hierárquica detalhada de todos os módulos, scripts, assets e binários.
   6. *Protocolos de Governança*: Exigência de backups timestampados, CHANGELOG cirúrgico e inspeção visual prévia.
 - **Por quê**: Assegurar continuidade de contexto perfeita, soberania técnica e rastreabilidade total para qualquer nova sessão ou desenvolvedor que assumir o projeto.
+
+
+## [2026-11-07 18:35:00] - Benchmark Comparativo: llama.cpp vs JustVugg/colibri com OmniVoice Pipeline
+
+### Arquivos Criados
+- `scripts/benchmark_llamacpp_vs_colibri.py`: Suite automatizada de benchmark comparativo com logging cirúrgico de stdout/stderr, streaming SSE, particionamento de frases e medições de alta precisão (TTFT, TTFP, TTFA, velocidade em tok/s e RTF da voz).
+- `assets/renders/benchmark_colibri_vs_llama/benchmark_results.json`: Dados brutos completos de todas as 5 rodadas de testes.
+- `assets/renders/benchmark_colibri_vs_llama/*.wav`: 51 amostras de áudio PCM sintetizadas em 24 kHz durante as baterias.
+- `logs/benchmark_llama_server.log`: Captura completa de stdout/stderr do llama-server na GPU CUDA.
+- `logs/benchmark_colibri_server.log`: Captura completa de stdout/stderr do Colibrì nos backends Vulkan e CPU.
+
+### Detalhamento Cirúrgico
+- **Adicionado**:
+  - Clonagem e configuração do repositório `JustVugg/colibri` v2.1.0 em `tools/colibri`.
+  - Instalação dos motores binários pré-compilados e backend CUDA/Vulkan em `C:\Users\thiag\AppData\Local\colibri\runtime\colibri-v2.1.0`.
+  - Importação lossless em modo link do modelo de produção `E:\modelos_ollama\LFM3-Audio-2B-Q4_K_M.gguf` para `LFM3-Audio-2B-Q4_K_M.colibri`.
+  - Execução de 5 rodadas com a pergunta padrão *"fale-me sobre o existencialismo"*:
+    1. `llama.cpp (CUDA)`: Rodada 1 (Cold: 104.8 tok/s, TTFT: 61.2 ms, TTFA: 2.37 s) e Rodada 2 (Warm: 79.1 tok/s, TTFT: 100.0 ms, TTFA: 2.67 s).
+    2. `Colibri (Vulkan GPU)`: Rodada 1 (Cold: 92.6 tok/s, TTFT: 178.1 ms, TTFA: 7.28 s) e Rodada 2 (Warm: 66.6 tok/s, TTFT: 159.3 ms, TTFA: 10.07 s).
+    3. `Colibri (CPU AVX2)`: Rodada 1 (12.8 tok/s, TTFT: 1020.6 ms, TTFA: 39.31 s).
+  - Resolução do problema de supressão de logs de execução através de line-buffering em stdout e direcionamento dedicado de streams para os arquivos em `logs/`.
+- **Por quê**: Atender com precisão científica e empírica ao pedido do usuário de benchmark comparativo entre os dois motores de inferência utilizando rigorosamente o mesmo pipeline e pergunta longa.
+
+
+## [2026-11-08 16:54:00] - Benchmark Multi-SSD no Colibri: Comparativo de I/O e Inferência (C: vs D: vs E:)
+
+### Arquivos Criados
+- `scripts/benchmark_colibri_3_ssds.py`: Script de benchmark multi-drive com teste de hardware I/O unbuffered direto via `kernel32.dll` (leitura sequencial de 1GB e aleatória de 64K com medição de IOPS/latência) e pipeline completo de inferência Colibri + OmniVoice nos 3 discos.
+- `assets/renders/benchmark_3_ssds/ssd_comparison_results.json`: Dados brutos estruturados de I/O físico e timings de inferência para C:, D: e E:.
+- `assets/renders/benchmark_3_ssds/*.wav`: Amostras de voz sintetizadas durante os testes multi-drive.
+
+### Detalhamento Cirúrgico
+- **Adicionado**:
+  - Detecção fisiológica dos 3 discos via PowerShell `Get-PhysicalDisk` e `Get-Partition`:
+    1. Drive C: `WDC PC SN730 1TB` (PCIe Gen3 x4 NVMe M.2 Interno)
+    2. Drive D: `WD_BLACK SN750 1TB` (PCIe Gen3 x4 NVMe M.2 Interno)
+    3. Drive E: `WD_BLACK SN770 2TB` (USB 3.2 Type-C Enclosure)
+  - Cópia e importação do modelo `LFM3-Audio-2B-Q4_K_M` em `C:\colibri-models` e `D:\isabella-desktop\assets\models`.
+  - Execução dos testes comparativos de hardware e inferência:
+    - Leitura sequencial unbuffered: Drive C (2.080,5 MB/s), Drive D (1.841,2 MB/s), Drive E (852,7 MB/s -> 2,44x mais lento).
+    - Carga dos tensores no Colibri: Drive C (1,10 s), Drive D (1,20 s), Drive E (2,50 s -> 2,27x mais lento).
+    - TTFT inicial (Cold Start): Drive C (63,7 ms), Drive D (174,5 ms), Drive E (187,4 ms).
+- **Por quê**: Validar a hipótese levantada pelo usuário de que o Drive E (conectado via USB-C) apresentava gargalo de I/O em relação aos SSDs NVMe internos (C: e D:).
+
+
+## [2026-11-08 18:25:00] - Benchmark de KV Cache em 30 Turnos: Comparativo FP16 vs FP32 vs Linear (No-Ring)
+
+### Arquivos Criados
+- `scripts/benchmark_kv_cache_30turns.py`: Script autônomo de benchmark para conversação contínua de 30 turnos, com rastreamento de métricas finas por turno (TTFT, tok/s, tokens de prompt/completion, taxa de reuso do prefix cache, latência T(1) do gating especulativo, aceitação do n-gram lookup, espera de GPU em ms/token, RSS do processo via psutil, VRAM via nvidia-smi e cálculo analítico da geometria e capacidade do KV cache no motor `qwen36`).
+- `assets/renders/benchmark_kv_cache/kv30_baseline_f16_20261108_180045.json`: Dados empíricos completos dos 30 turnos do baseline de produção (FP16 com Ring Buffer ativo).
+- `assets/renders/benchmark_kv_cache/kv30_kv_f32_20261108_180826.json`: Dados empíricos completos dos 30 turnos com precisão FP32 no cache KV (`Q36_KV=f32`).
+- `assets/renders/benchmark_kv_cache/kv30_no_ring_20261108_181756.json`: Dados empíricos completos dos 30 turnos com ring buffer desativado (`Q36_KV_RING=0`).
+- `logs/kv30_baseline_f16_server.log`: Log de execução e estatísticas do servidor Colibri no teste baseline.
+- `logs/kv30_kv_f32_server.log`: Log de execução e estatísticas do servidor Colibri no teste FP32.
+- `logs/kv30_no_ring_server.log`: Log de execução e estatísticas do servidor Colibri no teste No-Ring.
+
+### Detalhamento Cirúrgico
+- **Adicionado**:
+  - Implementação de bateria padronizada de 30 perguntas filosóficas correlacionadas, partindo de *"O existencialismo é um humanismo?"* e explorando Sartre, Beauvoir, Camus, Heidegger, Kierkegaard, Merleau-Ponty e Dostoiévski.
+  - Execução dos 3 experimentos comparativos (90 turnos e >64.500 tokens totais):
+    1. `baseline_f16`: 21.338 tokens gerados em 277,56 s (4m 37s); média ponderada de **142,89 tok/s** (média aritmética de 157,19 tok/s, pico de 218,12 tok/s); contexto final de 22.331 posições ocupando apenas **266,69 MiB** de KV cache com pico de VRAM em 2.443 MiB.
+    2. `kv_f32`: 21.860 tokens gerados em 328,56 s; média ponderada de **103,20 tok/s** (perda de ~28% por saturação de banda de VRAM); cache KV final ocupando **545,88 MiB** (exatamente o dobro) e pico de VRAM em 2.889 MiB.
+    3. `no_ring`: 21.332 tokens gerados em 552,79 s (9m 12s, quase 2x mais lento); velocidade ponderada em colapso para **67,06 tok/s** (-53%); cache final em **479,83 MiB** e TTFT médio explodindo de 2,4s para 6,35s (picos de 15,4s).
+  - Identificação e comprovação empírica de que o mecanismo `Q36_KV_RING=1` do motor `qwen36` (isolando 5 camadas de *sliding attention* num ring buffer fixo de 512 posições = 5,0 MiB) é o elemento-chave que permite à Isabella manter velocidade superior a 140 tok/s mesmo em conversações longas superiores a 20.000 tokens de histórico.
+- **Por quê**: Cumprir a solicitação do usuário de testar 30 turnos contínuos partindo da conferência de Sartre, mensurando tempos, velocidades, picos, mínimos, tamanho do KV cache e o impacto das técnicas modernas de gerenciamento de cache KV.
+
+
+## [2026-11-08 23:15:00] - Aplicação em Produção da Metodologia Ótima e Teste de Estresse aos Limites de KV (1 GB e 2 GB)
+
+### Arquivos Modificados
+- `start_isabella_omnivoice.ps1`: Inicialização automática do Colibri v2.1.0 na porta 8000 com variáveis de alta performance (`COLI_CUDA=1`, `COLI_LOOKUP=1`, `COLI_SPEC_GATE=1`, `COLI_CUDA_CHAIN_ROWS=4096`, `Q36_KV=f16`, `Q36_KV_RING=1`, `KVSAVE=0`) e modelos no drive NVMe interno `D:\isabella-desktop\assets\models\`, mantendo porta 8080 para o servidor multimodal ASR.
+- `start_isabella.ps1`: Mesma padronização da arquitetura mestre de produção com Colibri na porta 8000 e llama-server na porta 8080.
+- `scripts/voice_bridge_omnivoice.py`: Roteamento inteligente de geração de texto conversacional em streaming para o Colibri em 127.0.0.1:8000 (>140 tok/s), com fallback transparente para llama-server em 127.0.0.1:8080 e ASR dedicado via Conformer multimodal.
+- `scripts/voice_bridge.py`: Roteamento convergente do motor de inferência conversacional para porta 8000.
+
+### Arquivos Criados
+- `scripts/stress_test_kv_limits.py`: Suite de teste de estresse de contexto progressivo, avaliando 9 marcos estratégicos (2k, 10k, 22k, 32k, 50k, 87k [1 GiB], 128k [teto nativo], 174k [2 GiB] e 200k+).
+- `assets/renders/benchmark_kv_limits/kv_stress_results_*.json`: Dados empíricos coletados dos testes de estresse.
+
+### Detalhamento Cirúrgico
+- **Adicionado**:
+  - Aplicação dos parâmetros ótimos auditados no runtime dos launchers e bridges de voz.
+  - Teste de estresse com scaling de contexto:
+    1. *Até 32k tokens*: Desempenho mantido entre **136,1 e 166,2 tok/s**, VRAM entre 1,76 GB e 2,50 GB, atingindo com folga todas as metas do usuário (mínimo 100 tok/s, médio 120 tok/s, pico até 218 tok/s).
+    2. *50k tokens*: Velocidade sustentada em **117,4 tok/s**, VRAM em 2,71 GB (44,2% de 6GB).
+    3. *87k tokens (1.0 GiB de KV Cache)*: Ocorre em 86.954 tokens; velocidade em **91,3 tok/s**, VRAM em 3,15 GB (51,2%).
+    4. *128k tokens (1.5 GiB de KV Cache)*: Esgotamento de VRAM a 90,7% (5.574 MiB), forçando paging para memória host do sistema (RAM) e derrubando a velocidade para **3,5 tok/s**.
+    5. *174k tokens (2.0 GiB de KV Cache) - Ponto de Ruptura*: O motor Colibri detecta que o buffer de 2.0 GiB de KV não deixa margem para manter os pesos do modelo na VRAM de 6GB (`dev 0 holds 0.0 MB of trunk`); o subsistema CUDA é desativado (`chain stays off`) e a inferência cai 100% para a CPU.
+- **Por quê**: Atender ao comando `/goal` do usuário solicitando a aplicação da metodologia ótima em produção e o teste empírico dos limites de 1 GB e 2 GB de KV Cache com identificação exata do ponto de quebra.

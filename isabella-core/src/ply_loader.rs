@@ -1,9 +1,9 @@
-use std::fs::File;
-use std::io::{BufRead, BufReader};
 use bytemuck::{Pod, Zeroable};
 use byteorder::{LittleEndian, ReadBytesExt};
+use std::fs::File;
+use std::io::{BufRead, BufReader};
 
-const SH_C0: f32 = 0.28209479177387814;
+const SH_C0: f32 = 0.282_094_8;
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Pod, Zeroable)]
@@ -55,10 +55,13 @@ pub fn load_splat_ply(path: &str) -> Result<Vec<SplatGpu>, Box<dyn std::error::E
         return Err("Nenhum vértice encontrado no arquivo PLY".into());
     }
 
-    println!("[PLY Loader] Carregando {} gaussianas de: {}", vertex_count, path);
+    println!(
+        "[PLY Loader] Carregando {} gaussianas de: {}",
+        vertex_count, path
+    );
 
     let mut splats = Vec::with_capacity(vertex_count);
-    
+
     let mut min_pos = [f32::MAX, f32::MAX, f32::MAX];
     let mut max_pos = [f32::MIN, f32::MIN, f32::MIN];
 
@@ -66,7 +69,7 @@ pub fn load_splat_ply(path: &str) -> Result<Vec<SplatGpu>, Box<dyn std::error::E
         let raw_x = reader.read_f32::<LittleEndian>()?;
         let raw_y = reader.read_f32::<LittleEndian>()?;
         let raw_z = reader.read_f32::<LittleEndian>()?;
-        
+
         let _nx = reader.read_f32::<LittleEndian>()?;
         let _ny = reader.read_f32::<LittleEndian>()?;
         let _nz = reader.read_f32::<LittleEndian>()?;
@@ -129,8 +132,10 @@ pub fn load_splat_ply(path: &str) -> Result<Vec<SplatGpu>, Box<dyn std::error::E
         });
     }
 
-    println!("[PLY Loader] Bounding box frontal: X[{:.2}, {:.2}], Y[{:.2}, {:.2}], Z[{:.2}, {:.2}]",
-        min_pos[0], max_pos[0], min_pos[1], max_pos[1], min_pos[2], max_pos[2]);
+    println!(
+        "[PLY Loader] Bounding box frontal: X[{:.2}, {:.2}], Y[{:.2}, {:.2}], Z[{:.2}, {:.2}]",
+        min_pos[0], max_pos[0], min_pos[1], max_pos[1], min_pos[2], max_pos[2]
+    );
 
     // Centralizar modelo na origem
     let center = [
