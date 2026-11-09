@@ -950,7 +950,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 next_blink_time = elapsed + 0.22;
                             } else {
                                 let pseudo_rand =
-                                    ((blink_counter as f32 * 1.618_034).fract() * 2.8) + 2.8;
+                                    ((blink_counter as f32 * 1.371_928).fract() * 2.8) + 2.8;
                                 next_blink_time = elapsed + pseudo_rand;
                             }
                         }
