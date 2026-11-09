@@ -1,5 +1,30 @@
 # CHANGELOG
 
+## [2026-11-09 09:22:00] - Instalador Automatizado (1 Clique), Portabilidade Dinâmica e Atualização Integral do README
+- **Branch Ativa**:
+  - `master`
+- **Arquivos Criados**:
+  - `install.ps1` (Instalador PowerShell automatizado com validação de GPU NVIDIA/CUDA, setup de uv, compilação de release Rust e download de binários llama-server)
+  - `instalar.bat` (Launcher em lote para execução do instalador com 1 clique)
+- **Arquivos Modificados**:
+  - `README.md` (Backup: `backups/root/README.md.bak_20261109_092000`)
+  - `start_isabella.ps1` (Backup: `backups/root/start_isabella.ps1.bak_20261109_092000`)
+  - `start_isabella_omnivoice.ps1` (Backup: `backups/root/start_isabella_omnivoice.ps1.bak_20261109_092000`)
+  - `CHANGELOG.md` (Backup: `backups/changelogs/CHANGELOG.md.bak_20261109_092000`)
+- **Implementações Cirúrgicas Realizadas**:
+  1. *Portabilidade Absoluta*: Substituídos todos os caminhos estáticos hardcoded (`D:\isabella-desktop`, `C:\Users\thiag\`) por caminhos dinâmicos baseados em `$PSScriptRoot` e `$env:LOCALAPPDATA`, permitindo execução em qualquer drive e diretório do usuário.
+  2. *Instalador Automatizado (`instalar.bat` / `install.ps1`)*:
+     - Validação de GPU NVIDIA via `nvidia-smi`;
+     - Verificação do instalador `uv` standalone com auto-instalação se ausente;
+     - Verificação da toolchain Rust `cargo`;
+     - Download automatizado das ferramentas de inferência `llama-cpp` CUDA 12.4;
+     - Compilação automática do renderizador `isabella-core` em release;
+     - Auditoria visual da presença de modelos em `assets/models/`.
+  3. *Atualização do `README.md`*:
+     - Inclusão da badge do pipeline de CI (`.github/workflows/ci.yml`);
+     - Novo diagrama de blocos arquitetural integrando HippoRAG 2, Janela Elástica, Colibri CUDA, OmniVoice e renderizador WGPU Win32;
+     - Guia passo a passo de instalação em 1 clique e tabela de benchmarks de velocidade e retenção de memória.
+
 ## [2026-11-09 09:17:00] - Merge Oficial da Branch de Testes (`test/voice-omnivoice-clone`) na Branch `master`
 - **Branch Ativa**:
   - `master`
