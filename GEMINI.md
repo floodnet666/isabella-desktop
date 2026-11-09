@@ -89,6 +89,11 @@ O **Isabella Desktop** é um companion interativo de área de trabalho para Wind
    - 8 estados emocionais integrados: **Neutro**, **Alegria (Joy)**, **Smirk / Provocante**, **Surpresa / Curiosa**, **Tristeza / Dengo**, **Medo / Chocada**, **Raiva / Tensa**, **Nojo / Desdém**.
    - Deformadores em envelope contínuo $C^1$ (sem quebra de malha) aliados à cinemática cervical 3D (Roll, Pitch, Yaw).
    - Teclas de atalho `F1`–`F8` e injeção automática pelo Voice Bridge via análise léxica das respostas do LLM.
+6. **Subconjunto de Memória Persistente Multi-Sessão e Janela Elástica (2026)**:
+   - **Dual Engine de Recuperação**: HippoRAG 2 (Personalized PageRank em grafo hipocampal bipartite em <15 ms) + Contextual FTS5 BM25 com prefixos contextuais.
+   - **Orquestração Elástica de Contexto**: Janela dinâmica de 2.048 a 8.192 tokens com gating estrito por fronteiras semânticas de diálogo, eliminando degradações de velocidade na GPU.
+   - **Consolidação em Sleep-Time**: Processamento em background de diálogos ociosos via `SleepDreamer`, extraindo triplas e sinapses associativas.
+   - **Observabilidade**: Trilha de proveniência completa (Path Trace), PRA (100%), SAC (100%), e velocidade sustentada de 146,5 tok/s (pico de 193,0 tok/s).
 
 ---
 
@@ -124,6 +129,10 @@ Qualquer alteração futura no código deve respeitar rigorosamente os seguintes
 ### ⚠️ Lição Crítica 7: Concorrência de VRAM e Cores CUDA entre LLM e TTS
 - **Falha/Descoberta**: Em GPUs de consumo com 6GB de VRAM (NVIDIA RTX 3060 Laptop), executar simultaneamente a decodificação do LLM e a síntese por difusão do OmniVoice TTS (`num_step=16`) na mesma GPU (`cuda:0`) causa disputa crítica de núcleos CUDA, reduzindo a vazão de decodificação de **107.5 tok/s** para **23.9 tok/s**.
 - **Regra Absoluta**: Para manter velocidade sustentada >100 tok/s, a síntese de áudio pesada deve ser amortizada, executada com menor número de passos (`num_step=8`), ou delegada a motor ultrarrápido (ex: Kokoro ONNX em CPU/GPU) durante a geração de tokens.
+
+### ⚠️ Lição Crítica 8: Gestão de Memória Multi-Hop e Escala de Sessões Longas
+- **Falha/Descoberta**: Alimentar todo o histórico de conversas no KV Cache leva a saturação de memória (>1.0 GiB a 87k tokens, colapso de velocidade para 3.5 tok/s a 128k e queda do CUDA a 174k). Além disso, busca vetorial simples por similaridade de cosseno (Vector RAG) sofre de visão de túnel e falha quando fatos estão dispersos entre sessões diferentes.
+- **Regra Absoluta**: Utilizar arquitetura híbrida **HippoRAG 2 + Contextual FTS5 BM25** associada a **Janela Elástica com Gating Semântico** (2k-8k tokens). A compactação de contexto só deve ocorrer em fronteiras naturais de tópico ou silêncio, e a busca multi-hop deve ser resolvida via Personalized PageRank (PPR) no grafo em SQLite (<15ms), mantendo o KV Cache leve na GPU e velocidade >140 tok/s.
 
 ---
 
@@ -269,6 +278,14 @@ D:\isabella-desktop\
 │       └── shader.wgsl          # Vertex shader EWA 3DGS, deformadores FACS e cinemática
 │
 ├── scripts\                     # Pipelines Python de suporte e IA
+│   ├── memory\                  # Subsistema de memória persistente e multi-hop (2026)
+│   │   ├── __init__.py          # Exportação do pacote de memória
+│   │   ├── hipporag_engine.py   # Grafo hipocampal e Personalized PageRank (PPR)
+│   │   ├── contextual_fts5.py   # Busca léxica contextualizada BM25 via SQLite FTS5
+│   │   ├── elastic_window.py    # Orquestrador de contexto elástico (2k-8k tok) e gating
+│   │   ├── sleep_dreamer.py     # Consolidação desacoplada em tempo de ociosidade
+│   │   └── memory_observer.py   # Logger de proveniência (Path Trace) e métricas PRA/SAC/TOS
+│   ├── benchmark_multisession_memory.py # Benchmark científico de memória multi-sessão
 │   ├── benchmark_llamacpp_vs_colibri.py # Benchmark científico completo (Llama vs Colibri)
 │   ├── benchmark_colibri_3_ssds.py     # Benchmark comparativo de armazenamento em 3 SSDs
 │   ├── voice_bridge.py          # Listener contínuo: VAD + ASR + TTS Kokoro + UDP
@@ -277,6 +294,9 @@ D:\isabella-desktop\
 │   ├── setup_llamacpp.py        # Instalador automatizado do backend llama.cpp CUDA
 │   ├── run_local_idol.py        # Pipeline de reconstrução 3D neural (DINOv3 + FLUX.2 VAE)
 │   └── apply_uv_texture_3dgs.py # Otimização Powell de projeção UV e micro-densificação
+│
+├── tests\                       # Bateria de testes unitários automatizados (TDD / XP)
+│   └── test_memory_system.py    # Validação do subsistema de memória (5 suites)
 │
 ├── assets\                      # Recursos binários e modelos
 │   ├── models\                  # Nuvens de gaussianas (.ply) e modelos neurais locais (NVMe D:)

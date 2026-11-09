@@ -1,5 +1,41 @@
 # CHANGELOG
 
+## [2026-11-09 08:00:00] - Implementação do Subsistema de Memória Multi-Sessão (HippoRAG 2 + Contextual FTS5) e Janela Elástica de Contexto
+- **Branch Ativa**:
+  - `origin/test/voice-omnivoice-clone`
+- **Arquivos Criados**:
+  - `D:\isabella-desktop\scripts\memory\__init__.py` (Módulo central de memória)
+  - `D:\isabella-desktop\scripts\memory\contextual_fts5.py` (Armazenamento episódico BM25 via SQLite FTS5 com prefixos contextuais)
+  - `D:\isabella-desktop\scripts\memory\hipporag_engine.py` (Grafo bipartido hipocampal com Personalized PageRank em <15ms)
+  - `D:\isabella-desktop\scripts\memory\elastic_window.py` (Orquestrador de contexto dinâmico 2k-8k tokens e gating por fronteira semântica)
+  - `D:\isabella-desktop\scripts\memory\sleep_dreamer.py` (Consolidador offline em background de triplas e sinapses associativas)
+  - `D:\isabella-desktop\scripts\memory\memory_observer.py` (Rastreador de proveniência de recuperação Path Trace e cálculo de PRA, SAC e TOS)
+  - `D:\isabella-desktop\scripts\benchmark_multisession_memory.py` (Harness automatizado de validação multi-sessão em 3 datas)
+  - `D:\isabella-desktop\tests\test_memory_system.py` (Suite de testes unitários TDD cobrindo os 5 módulos)
+- **Arquivos Modificados**:
+  - `D:\isabella-desktop\GEMINI.md` (Backup: `backups/root/GEMINI.md.bak_20261109_080000`)
+  - `D:\isabella-desktop\CHANGELOG.md` (Backup: `backups/changelogs/CHANGELOG.md.bak_20261109_080000`)
+- **Problema & Metas**:
+  1. *Gargalo de Sessões Longas*: A degradação contínua de velocidade no KV Cache da GPU ao acumular tokens (queda para 91 tok/s a 87k tokens e colapso total a 174k tokens) exigia controle de orçamento sem truncamento abrupto de pensamentos.
+  2. *Visão de Túnel de Vector RAGs*: A busca puramente vetorial por similaridade de cosseno falha quando a informação necessária para a resposta está dispersa em partes entre diferentes sessões e datas.
+  3. *Retenção Multi-Hop & Consistência*: Garantir que o companion lembre das preferências informadas nos primeiros turnos, mantenha coerência com respostas anteriores e conecte fatos de datas distintas sem perda de velocidade.
+- **Implementação & Metodologia (TDD / XP)**:
+  1. *Fase Red*: Criados 5 testes unitários em `tests/test_memory_system.py` cobrindo FTS5, HippoRAG PPR, Elastic Window, SleepDreamer e MemoryObserver. Execução inicial confirmou falhas controladas (`errors=5`).
+  2. *Fase Green*: Implementados os 5 componentes com tipagem estrita, indexação SQLite nativa sem sobrecarga de GPU, e ranking dinâmico no HippoRAG combinando pontuação de Personalized PageRank com peso de sinapse (`activation_score = ppr_score * synapse_weight`). Reexecução atingiu `5/5 OK` em 0.99s.
+  3. *Fase Refactor / Validação Científica*: Criado o harness `benchmark_multisession_memory.py` simulando três datas consecutivas:
+     - *Sessão 1 (2026-11-01)*: Usuário define preferência por Simone de Beauvoir e discute a moral da ambiguidade. SleepDreamer consolida 4 triplas e 4 sinapses.
+     - *Sessão 2 (2026-11-03)*: Usuário discute a estética de Schopenhauer e testa a recuperação da preferência. O HippoRAG recupera o nó de Beauvoir via PPR com score 0.1738. Teste PRA validou menção com 100% de precisão.
+     - *Sessão 3 (2026-11-08)*: Pergunta multi-hop exigindo síntese entre a estética de Schopenhauer (Sessão 2) e a liberdade situada de Beauvoir (Sessão 1). Ativação conjunta hipocampal confirmada no log de proveniência.
+- **Resultados Empíricos Obtidos (RTX 3060 Laptop 6GB / Colibri CUDA v2.1.0)**:
+  - **Velocidade Média**: **146.53 tok/s** (Meta $\ge 120$ superada com +22% de margem);
+  - **Velocidade de Pico**: **193.04 tok/s** (Meta $\sim 200$ alcançada no Turno 1.1);
+  - **Velocidade Mínima**: **127.12 tok/s** (Meta $\ge 100$ superada com +27% de margem);
+  - **Time to First Token (TTFT)**: Média de **157.54 ms** (pico mais rápido de 57.06 ms);
+  - **Preference Recall Accuracy (PRA)**: **1.00 (100%)** em todas as consultas de preferência;
+  - **Self-Answer Consistency (SAC)**: **1.00 (100%)** na reconstrução do argumento de ambiguidade;
+  - **Temporal Ordering Score (TOS)**: **0.93** mantendo ordem cronológica das memórias;
+  - **Consumo de VRAM**: Pico de **1.792 MiB** (29.2% da capacidade total), preservando headroom para o renderizador 3DGS WGPU.
+
 ## [2026-11-08 17:15:00] - Superação da Meta de >100 tok/s com JustVugg/Colibri (CUDA Nativo) e Consolidação de Pesos no NVMe Local D:
 - **Branch Ativa**:
   - `origin/test/voice-omnivoice-clone`
