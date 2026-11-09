@@ -106,9 +106,17 @@ if (Test-Path $PromptVoice) {
     Write-Host "      [OK] Prompt de Voz OmniVoice: Presente" -ForegroundColor Green
 }
 
+# 7. Copiar e Iniciar Assistente Nativo de Personalidade (IsabellaSetup.exe)
+$SetupBin = Join-Path $RootDir "isabella-core\target\release\IsabellaSetup.exe"
+$RootSetup = Join-Path $RootDir "IsabellaSetup.exe"
+if (Test-Path $SetupBin) {
+    Copy-Item $SetupBin $RootSetup -Force
+    Write-Host "`n[7/7] Abrindo Assistente de Personalidade (IsabellaSetup.exe)..." -ForegroundColor Cyan
+    Start-Process -FilePath $RootSetup -WorkingDirectory $RootDir
+}
+
 Write-Host "`n=======================================================" -ForegroundColor Cyan
 Write-Host "         INSTALAÇÃO CONCLUÍDA COM SUCESSO!             " -ForegroundColor Cyan
 Write-Host "=======================================================" -ForegroundColor Cyan
-Write-Host "Para iniciar Isabella:"
-Write-Host "  1. Conversa Multimodal com OmniVoice : Execute 'iniciar_conversa_omnivoice.bat'" -ForegroundColor White
-Write-Host "  2. Conversa Rápida Padrão (Kokoro)   : Execute 'iniciar_isabella.bat'`n" -ForegroundColor White
+Write-Host "A Isabella opera 100% em segundo plano (System Tray) sem janelas de terminal." -ForegroundColor Green
+Write-Host "Atalho criado na Área de Trabalho: 'Isabella Companion'" -ForegroundColor White

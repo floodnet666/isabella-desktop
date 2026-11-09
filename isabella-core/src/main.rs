@@ -1,9 +1,15 @@
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
+mod personality;
 mod ply_loader;
 mod renderer;
+mod tray_and_services;
 
+use personality::PersonalityProfile;
 use renderer::ExpressionParams;
 use std::sync::{Arc, Mutex};
 use tokio::net::UdpSocket;
+use tray_and_services::{BackgroundServices, SystemTray, TrayAction};
 use winit::{
     dpi::{LogicalSize, PhysicalPosition},
     event::{ElementState, Event, MouseButton, WindowEvent},
@@ -162,9 +168,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         use windows::Win32::Graphics::Dwm::DwmExtendFrameIntoClientArea;
         use windows::Win32::UI::Controls::MARGINS;
         use windows::Win32::UI::WindowsAndMessaging::{
-            GetWindowLongPtrW, SetWindowLongPtrW, SetWindowPos, GWL_STYLE, SWP_FRAMECHANGED,
-            SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER, WS_CAPTION, WS_MAXIMIZEBOX,
-            WS_MINIMIZEBOX, WS_POPUP, WS_SYSMENU, WS_THICKFRAME, WS_VISIBLE,
+            GetWindowLongPtrW, SetWindowLongPtrW, SetWindowPos, GWL_EXSTYLE, GWL_STYLE,
+            SWP_FRAMECHANGED, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER, WS_CAPTION,
+            WS_EX_APPWINDOW, WS_EX_TOOLWINDOW, WS_MAXIMIZEBOX, WS_MINIMIZEBOX, WS_POPUP,
+            WS_SYSMENU, WS_THICKFRAME, WS_VISIBLE,
         };
         use winit::raw_window_handle::{HasWindowHandle, RawWindowHandle};
 
@@ -181,6 +188,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     | WS_MAXIMIZEBOX.0);
                 style |= WS_POPUP.0 | WS_VISIBLE.0;
                 unsafe { SetWindowLongPtrW(hwnd, GWL_STYLE, style as isize) };
+
+                // 1b. Aplicar WS_EX_TOOLWINDOW para que a janela 3DGS não crie botão extra na barra de tarefas,
+                // permanecendo exclusivamente no Desktop + System Tray (ícone na área de notificação).
+                let mut ex_style = unsafe { GetWindowLongPtrW(hwnd, GWL_EXSTYLE) } as u32;
+                ex_style &= !WS_EX_APPWINDOW.0;
+                ex_style |= WS_EX_TOOLWINDOW.0;
+                unsafe { SetWindowLongPtrW(hwnd, GWL_EXSTYLE, ex_style as isize) };
 
                 // 2. Notificar o compositor do Windows para recalcular e descartar a moldura e botões imediatamente
                 unsafe {
@@ -553,13 +567,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
+    let project_root = PersonalityProfile::resolve_project_root();
+    let mut profile = PersonalityProfile::load_or_default(None);
+
+    let mut bg_services = BackgroundServices::new(project_root.clone());
+    if !args.iter().any(|a| a == "--no-services") {
+        bg_services.start_all(&profile);
+    }
+    let system_tray = SystemTray::new(&project_root, &profile.archetype_id);
+    let mut is_window_visible = true;
+
     let shared_state = Arc::new(Mutex::new(SharedState {
         jaw_open: 0.0,
         lip_round: 0.0,
         lip_spread: 0.0,
-        smile: 0.18,
+        smile: profile.base_smile,
         avatar_state: "idle".to_string(),
-        emotion: EmotionState::default(),
+        emotion: EmotionState {
+            smirk: profile.base_smirk,
+            ..Default::default()
+        },
     }));
 
     // Iniciar escuta UDP de áudio/visemas/emoções na porta 9888
@@ -626,7 +653,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut fallback_cursor = (0.0f32, 0.0f32);
     let mut smooth_mouse = (0.0f32, 0.0f32);
     let mut cur_expr = ExpressionParams {
-        smile: 0.18,
+        smile: profile.base_smile,
+        smirk: profile.base_smirk,
         ..Default::default()
     };
 
@@ -658,7 +686,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         match event {
             Event::WindowEvent { event, window_id } if window_id == window.id() => match event {
-                WindowEvent::CloseRequested => elwt.exit(),
+                WindowEvent::CloseRequested => {
+                    bg_services.stop_all();
+                    elwt.exit();
+                }
                 WindowEvent::Resized(physical_size) => {
                     renderer.resize(physical_size);
                 }
@@ -708,7 +739,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     use winit::keyboard::{Key, NamedKey};
                     if event.state == ElementState::Pressed {
                         match event.logical_key {
-                            Key::Named(NamedKey::Escape) => elwt.exit(),
+                            Key::Named(NamedKey::Escape) => {
+                                bg_services.stop_all();
+                                elwt.exit();
+                            }
                             Key::Character(ref ch) if ch == "+" || ch == "=" => {
                                 apply_avatar_scale(
                                     current_scale * 1.08,
@@ -936,7 +970,58 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 _ => {}
             },
             Event::AboutToWait => {
-                window.request_redraw();
+                if let Some(ref tray) = system_tray {
+                    for action in tray.drain_actions() {
+                        match action {
+                            TrayAction::ToggleVisibility => {
+                                is_window_visible = !is_window_visible;
+                                window.set_visible(is_window_visible);
+                            }
+                            TrayAction::SelectArchetype(arch) => {
+                                profile = PersonalityProfile::from_questionnaire(
+                                    &profile.user_name,
+                                    &arch,
+                                    &profile.response_style,
+                                    &profile.proactivity,
+                                    &profile.voice_engine,
+                                );
+                                let _ = profile.save(None);
+                                if let Ok(mut st) = shared_state.lock() {
+                                    st.smile = profile.base_smile;
+                                    st.emotion.smirk = profile.base_smirk;
+                                }
+                                bg_services.restart_all(&profile);
+                            }
+                            TrayAction::OpenPersonalityWizard => {
+                                let mut setup_exe = project_root.join("IsabellaSetup.exe");
+                                if !setup_exe.exists() {
+                                    setup_exe = project_root
+                                        .join(r"isabella-core\target\release\IsabellaSetup.exe");
+                                }
+                                if setup_exe.exists() {
+                                    let _ = std::process::Command::new(setup_exe).spawn();
+                                }
+                            }
+                            TrayAction::RestartServices => {
+                                profile = PersonalityProfile::load_or_default(None);
+                                bg_services.restart_all(&profile);
+                            }
+                            TrayAction::OpenLogsFolder => {
+                                let logs_dir = project_root.join("logs");
+                                let _ = std::process::Command::new("explorer.exe")
+                                    .arg(logs_dir)
+                                    .spawn();
+                            }
+                            TrayAction::ExitApp => {
+                                bg_services.stop_all();
+                                elwt.exit();
+                            }
+                        }
+                    }
+                }
+                if is_window_visible {
+                    window.request_redraw();
+                }
             }
             _ => {}
         }

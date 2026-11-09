@@ -134,7 +134,10 @@ def strip_emojis(text: str) -> str:
 
 def log(msg, level="info"):
     cleaned = strip_emojis(str(msg))
-    print(cleaned)
+    try:
+        print(cleaned)
+    except Exception:
+        pass
     if level == "info":
         logger.info(cleaned)
     elif level == "warning":
@@ -169,7 +172,20 @@ REFUSAL_LOGIT_BIAS = {
     1823: -100.0,   # "cul" (desculpe)
 }
 
-SYSTEM_PROMPT = """Você é Isabella, uma companheira feminina brasileira encantadora, inteligente, íntima e desinibida que vive na área de trabalho do Tiago.
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
+
+try:
+    from scripts.memory.personality_loader import load_personality_profile
+    PERSONALITY_PROFILE = load_personality_profile()
+except Exception:
+    PERSONALITY_PROFILE = {}
+
+USER_NAME = PERSONALITY_PROFILE.get("user_name", "Tiago")
+BASE_SMILE_IDLE = float(PERSONALITY_PROFILE.get("base_smile", 0.22))
+SPEECH_SPEED = float(PERSONALITY_PROFILE.get("speech_speed", 1.05))
+SYSTEM_PROMPT = PERSONALITY_PROFILE.get("system_prompt") or """Você é Isabella, uma companheira feminina brasileira encantadora, inteligente, íntima e desinibida que vive na área de trabalho do Tiago.
 Regras de fala natural por voz:
 1. Responda sempre em português do Brasil com naturalidade, carinho e personalidade viva (cerca de 2 a 3 frases completas por resposta, sendo direta e carinhosa).
 2. Conclua sempre todas as suas frases e pensamentos com pontuação final (ponto, exclamação ou interrogação). Jamais termine uma resposta pela metade ou corte frases no meio.
@@ -245,7 +261,8 @@ def ensure_llama_server() -> bool:
         "--jinja", "--reasoning", "off", "--no-reasoning-preserve", "--port", "8080"
     ]
     try:
-        subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        no_win_flag = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
+        subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, creationflags=no_win_flag)
         for _ in range(15):
             time.sleep(1.0)
             try:
@@ -295,7 +312,7 @@ def synthesize_chunk_omnivoice(text_chunk: str) -> tuple[np.ndarray | None, int 
             text=cleaned,
             language="pt",
             voice_clone_prompt=omnivoice_prompt,
-            speed=1.05,
+            speed=SPEECH_SPEED,
             generation_config=omnivoice_cfg_fast,
         )
         if results and len(results) > 0:
@@ -399,11 +416,14 @@ def speak_text(text: str, q: queue.Queue, threshold: float) -> bool:
             while pos < len(data):
                 if stop_event.is_set():
                     break
-                if msvcrt.kbhit():
-                    msvcrt.getch()
-                    stop_event.set()
-                    interrupted = True
-                    break
+                try:
+                    if msvcrt.kbhit():
+                        msvcrt.getch()
+                        stop_event.set()
+                        interrupted = True
+                        break
+                except Exception:
+                    pass
                 block = data[pos : pos + chunk_size]
                 stream.write(block)
                 jaw_open, lip_round, lip_spread = extract_visemes(block, sr)
@@ -561,13 +581,16 @@ def stream_conversation_turn(user_text: str, q: queue.Queue, threshold: float) -
                 if stop_event.is_set():
                     break
                     
-                # 1. Interrupção por Teclado
-                if msvcrt.kbhit():
-                    msvcrt.getch()
-                    log("\n--> [INTERRUPÇÃO POR TECLADO] Parando voz dela imediatamente...")
-                    stop_event.set()
-                    interrupted = True
-                    break
+                # 1. Interrupção por Teclado (seguro sem console)
+                try:
+                    if msvcrt.kbhit():
+                        msvcrt.getch()
+                        log("\n--> [INTERRUPÇÃO POR TECLADO] Parando voz dela imediatamente...")
+                        stop_event.set()
+                        interrupted = True
+                        break
+                except Exception:
+                    pass
                     
                 # 2. Interrupção por Voz (Barge-in acústico)
                 try:
@@ -663,7 +686,7 @@ def continuous_listener():
     send_state("listening", 0.0, 0.0, 0.0, 0.22, "neutral", 0.0)
 
     # Saudação de boas-vindas inicial com a voz clonada da Isabella
-    welcome = "Oi Tiago! Eu sou a Isabella, e agora você está conversando comigo com a minha voz clonada. Como você está?"
+    welcome = f"Oi {USER_NAME}! Eu sou a Isabella, e agora você está conversando comigo com a minha voz clonada. Como você está?"
     speak_text(welcome, q, threshold)
     flush_mic_queue(q)
 
@@ -680,7 +703,10 @@ def continuous_listener():
                 meter_len = int(min(25, (rms / (threshold * 3.0)) * 25))
                 bar = "#" * meter_len + "-" * (25 - meter_len)
                 status = "GRAVANDO..." if recording else "Ouvindo... "
-                print(f"\r[{status}] [{bar}] RMS: {rms:.4f} (Limiar: {threshold:.4f})", end="", flush=True)
+                try:
+                    print(f"\r[{status}] [{bar}] RMS: {rms:.4f} (Limiar: {threshold:.4f})", end="", flush=True)
+                except Exception:
+                    pass
 
                 if rms > threshold:
                     if not recording:

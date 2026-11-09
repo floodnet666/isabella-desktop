@@ -6,6 +6,7 @@ Components:
 - ElasticWindowOrchestrator: Dynamic context window (2k-8k tokens) with semantic boundary gating.
 - SleepDreamer: Asynchronous background memory consolidator.
 - MemoryObserver: Provenance path trace logger and evaluation metrics (PRA, SAC, TOS).
+- PersonalityLoader: Custom personality profile builder, system prompt synthesizer, and HippoRAG inoculator.
 """
 
 from scripts.memory.contextual_fts5 import ContextualFTS5
@@ -13,6 +14,13 @@ from scripts.memory.hipporag_engine import HippoRAGEngine
 from scripts.memory.elastic_window import ElasticWindowOrchestrator
 from scripts.memory.sleep_dreamer import SleepDreamer
 from scripts.memory.memory_observer import MemoryObserver
+from scripts.memory.personality_loader import (
+    build_personality_profile,
+    load_personality_profile,
+    save_personality_profile,
+    inoculate_memory_with_profile,
+    ensure_app_icon,
+)
 
 __all__ = [
     "ContextualFTS5",
@@ -20,4 +28,9 @@ __all__ = [
     "ElasticWindowOrchestrator",
     "SleepDreamer",
     "MemoryObserver",
+    "build_personality_profile",
+    "load_personality_profile",
+    "save_personality_profile",
+    "inoculate_memory_with_profile",
+    "ensure_app_icon",
 ]

@@ -2,6 +2,15 @@
 name = "isabella-core"
 version = "0.1.0"
 edition = "2021"
+default-run = "isabella-core"
+
+[[bin]]
+name = "isabella-core"
+path = "src/main.rs"
+
+[[bin]]
+name = "IsabellaSetup"
+path = "src/bin/setup.rs"
 
 [dependencies]
 winit = "0.29"
@@ -22,6 +31,10 @@ features = [
     "Win32_UI_WindowsAndMessaging",
     "Win32_UI_Controls",
     "Win32_UI_Input_KeyboardAndMouse",
+    "Win32_UI_Shell",
     "Win32_Graphics_Gdi",
     "Win32_Graphics_Dwm",
+    "Win32_System_LibraryLoader",
+    "Win32_System_Console",
+    "Win32_System_Threading",
 ]

@@ -119,23 +119,36 @@ git clone --recurse-submodules https://github.com/floodnet666/isabella-desktop.g
 cd isabella-desktop
 ```
 
-### 2. Executar o Instalador Automático
-Dê duplo clique em **`instalar.bat`** (ou execute no PowerShell):
+### 2. Executar o Instalador e Assistente de Personalidade (`IsabellaSetup.exe`)
+Dê duplo clique em **`IsabellaSetup.exe`** (ou **`instalar.bat`** para compilação completa a partir do código-fonte):
 ```powershell
-.\install.ps1
+.\IsabellaSetup.exe
 ```
-O instalador automaticamente:
-1. Valida a GPU NVIDIA e o suporte a CUDA;
-2. Configura o gerenciador Python `uv`;
-3. Baixa os binários oficiais de inferência CUDA do `llama.cpp`;
-4. Compila o núcleo Rust `isabella-core` em modo release otimizado;
-5. Audita a pasta `assets/models/` para verificação de ativos.
+O assistente gráfico nativo em Rust (`IsabellaSetup.exe`):
+1. Apresenta o **Questionário de Personalidade em 5 eixos**:
+   - **Nome preferido do usuário**;
+   - **Arquétipo de Personalidade e Expressão 3DGS (FACS)**:
+     - *Doce, Acolhedora & Afetuosa*
+     - *Filosófica & Reflexiva*
+     - *Espirituosa, Irônica & Provocante*
+     - *Focada, Eficiente & Pragmática*
+   - **Estilo e Ritmo de Resposta** (*Direta e Concisa* vs *Desenvolvida e Explicativa*);
+   - **Iniciativa Conversacional** (*Proativa e Curiosa* vs *Reservada e Direta*);
+   - **Motor Neural de Voz** (*OmniVoice 24kHz Diffusion* vs *LFM3 LiquidCodec*);
+2. Gera automaticamente `config/personality_profile.json` ajustando o `SYSTEM_PROMPT`, a velocidade da fala e as expressões faciais de repouso (`base_smile`, `base_smirk`);
+3. **Inocula o banco de memória HippoRAG 2 + Contextual FTS5** (`assets/data/isabella_memory.db`) com as triplas fundamentais da preferência do usuário;
+4. Cria o atalho **`Isabella Companion`** na Área de Trabalho apontando diretamente para `isabella-core.exe` com ícone personalizado (`assets/isabella_icon.ico`).
 
-### 3. Iniciar o Companion
-- **Modo OmniVoice (Clonagem de Voz na VRAM)**:
-  Dê duplo clique em **`iniciar_conversa_omnivoice.bat`** (ou `.\start_isabella_omnivoice.ps1`).
-- **Modo Rápido / CPU (Kokoro ONNX)**:
-  Dê duplo clique em **`iniciar_isabella.bat`** (ou `.\start_isabella.ps1`).
+### 3. Execução 100% Silenciosa em Segundo Plano (System Tray — Zero Terminais)
+Ao clicar no atalho **`Isabella Companion`** na Área de Trabalho:
+- **Zero janelas de terminal (`cmd` / `PowerShell`) são abertas**: `isabella-core.exe` opera como aplicação nativa do subsistema gráfico Windows (`windows_subsystem = "windows"`, `WS_EX_TOOLWINDOW`) e supervisiona internamente os motores neurais (`Colibri`, `llama-server` e `Voice Bridge`) via flag Win32 `CREATE_NO_WINDOW` (`0x08000000`).
+- **Ícone na Área de Notificação (System Tray)**: Clique com o botão direito no ícone da Isabella perto do relógio do Windows para:
+  - *Mostrar / Ocultar Isabella no Desktop*;
+  - *Trocar a Personalidade em Tempo Real* (Doce, Filosófica, Espirituosa ou Focada);
+  - *Abrir o Assistente de Personalidade (`IsabellaSetup.exe`)*;
+  - *Reiniciar Motores de Voz em Background*;
+  - *Abrir Pasta de Logs*;
+  - *Encerrar Isabella Companion* (finaliza limpa e automaticamente todos os processos filhos).
 
 ---
 

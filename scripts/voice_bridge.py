@@ -131,7 +131,10 @@ def strip_emojis(text: str) -> str:
 
 def log(msg, level="info"):
     cleaned = strip_emojis(str(msg))
-    print(cleaned)
+    try:
+        print(cleaned)
+    except Exception:
+        pass
     if level == "info":
         logger.info(cleaned)
     elif level == "warning":
@@ -167,7 +170,19 @@ REFUSAL_LOGIT_BIAS = {
     1823: -100.0,   # "cul" (desculpe)
 }
 
-SYSTEM_PROMPT = """Você é Isabella, uma companheira feminina brasileira encantadora, inteligente, íntima e desinibida que vive na área de trabalho do Tiago.
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
+
+try:
+    from scripts.memory.personality_loader import load_personality_profile
+    PERSONALITY_PROFILE = load_personality_profile()
+except Exception:
+    PERSONALITY_PROFILE = {}
+
+USER_NAME = PERSONALITY_PROFILE.get("user_name", "Tiago")
+BASE_SMILE_IDLE = float(PERSONALITY_PROFILE.get("base_smile", 0.22))
+SYSTEM_PROMPT = PERSONALITY_PROFILE.get("system_prompt") or """Você é Isabella, uma companheira feminina brasileira encantadora, inteligente, íntima e desinibida que vive na área de trabalho do Tiago.
 Regras de fala natural por voz:
 1. Responda sempre em português do Brasil com naturalidade, carinho e personalidade viva (máximo 2 a 3 frases completas por resposta).
 2. Varie seu vocabulário e estilo com espontaneidade, sem bordões robóticos repetitivos ("Claro!").
@@ -191,10 +206,13 @@ def ensure_llama_server() -> bool:
         pass
         
     log("[Watchdog]: Servidor neural offline na porta 8080. Reiniciando llama-server automaticamente...", "warning")
-    model_path = r"E:\modelos_ollama\LFM3-Omni-2B-F16.gguf"
+    model_path = r"D:\isabella-desktop\assets\models\LFM3-Audio-2B-Q4_K_M.gguf"
+    mmproj_path = r"D:\isabella-desktop\assets\models\mmproj-LFM3-Audio-2B-Q8_0.gguf"
+    if not os.path.exists(model_path):
+        model_path = r"E:\modelos_ollama\LFM3-Omni-2B-F16.gguf"
+        mmproj_path = r"E:\modelos_ollama\mmproj-LFM3-Omni-2B-F16.gguf"
     if not os.path.exists(model_path):
         model_path = r"E:\modelos_ollama\LFM3-Omni-2B-Abliter8-BF16.gguf"
-    mmproj_path = r"E:\modelos_ollama\mmproj-LFM3-Omni-2B-F16.gguf"
     server_exe = r"D:\isabella-desktop\tools\llama-cpp\llama-server.exe"
     cmd = [
         server_exe, "-m", model_path, "--mmproj", mmproj_path,
@@ -202,7 +220,8 @@ def ensure_llama_server() -> bool:
         "--jinja", "--reasoning", "off", "--no-reasoning-preserve", "--port", "8080"
     ]
     try:
-        subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        no_win_flag = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
+        subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, creationflags=no_win_flag)
         for _ in range(15):
             time.sleep(1.0)
             try:
@@ -442,13 +461,16 @@ def speak_with_interruption_and_visemes(text: str, q: queue.Queue, threshold: fl
                 if stop_event.is_set():
                     break
                     
-                # 1. Interrupção por Teclado
-                if msvcrt.kbhit():
-                    msvcrt.getch()
-                    log("\n--> [INTERRUPÇÃO POR TECLADO] Parando voz dela imediatamente...")
-                    stop_event.set()
-                    interrupted = True
-                    break
+                # 1. Interrupção por Teclado (seguro para processo background sem console)
+                try:
+                    if msvcrt.kbhit():
+                        msvcrt.getch()
+                        log("\n--> [INTERRUPÇÃO POR TECLADO] Parando voz dela imediatamente...")
+                        stop_event.set()
+                        interrupted = True
+                        break
+                except Exception:
+                    pass
                     
                 # 2. Interrupção por Voz (Barge-in acústico)
                 try:
@@ -527,7 +549,7 @@ def continuous_listener():
     send_state("listening", 0.0, 0.0, 0.0, 0.22, "neutral", 0.0)
 
     # Saudação de boas-vindas inicial sincronizada com o avatar 3D
-    welcome = "Oi Tiago! Já estou aqui com você na área de trabalho. O que você quer fazer hoje?"
+    welcome = f"Oi {USER_NAME}! Já estou aqui com você na área de trabalho. O que você quer fazer hoje?"
     speak_with_interruption_and_visemes(welcome, q, threshold)
 
     with sd.InputStream(samplerate=fs, channels=1, dtype='float32', blocksize=int(fs*0.1), callback=mic_callback):
@@ -543,7 +565,10 @@ def continuous_listener():
                 meter_len = int(min(25, (rms / (threshold * 3.0)) * 25))
                 bar = "#" * meter_len + "-" * (25 - meter_len)
                 status = "GRAVANDO..." if recording else "Ouvindo... "
-                print(f"\r[{status}] [{bar}] RMS: {rms:.4f} (Limiar: {threshold:.4f})", end="", flush=True)
+                try:
+                    print(f"\r[{status}] [{bar}] RMS: {rms:.4f} (Limiar: {threshold:.4f})", end="", flush=True)
+                except Exception:
+                    pass
 
                 if rms > threshold:
                     if not recording:

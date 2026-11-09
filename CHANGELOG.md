@@ -1,5 +1,49 @@
 # CHANGELOG
 
+## [2026-11-09 10:20:00] - Assistente Nativo de Personalidade no Instalador (`IsabellaSetup.exe`, Opção A), Execução 100% Silenciosa (Zero Terminais) e Ícone no System Tray (`Shell_NotifyIconW`)
+- **Branch Ativa**:
+  - `master`
+- **Arquivos Criados**:
+  - `isabella-core/src/personality.rs` (Modelo de dados, síntese de prompt por arquétipo e serialização de `config/personality_profile.json` com testes unitários em Rust)
+  - `isabella-core/src/tray_and_services.rs` (Supervisor de processos em background via `CREATE_NO_WINDOW` e ícone nativo na bandeja do sistema Win32 `Shell_NotifyIconW` com menu popup interativo)
+  - `isabella-core/src/bin/setup.rs` (Assistente gráfico nativo Win32 `IsabellaSetup.exe` com Questionário de Personalidade em 5 eixos + modo `--headless` para CI/CD)
+  - `scripts/memory/personality_loader.py` (Sintetizador Python de perfil de personalidade, inoculador de triplas no banco HippoRAG 2 + Contextual FTS5 e gerador de `assets/isabella_icon.ico`)
+  - `tests/test_personality_and_installer.py` (Suíte de testes TDD validando arquétipos, inoculação HippoRAG, header `.ico` e execução de `IsabellaSetup.exe --headless` + atalho `.lnk`)
+  - `config/personality_profile.json` (Configuração persistente de personalidade e expressões FACS de repouso)
+  - `assets/isabella_icon.ico` (Ícone PNG-backed 256x256 de 32-bit para o System Tray e atalho do Desktop)
+- **Arquivos Modificados**:
+  - `isabella-core/Cargo.toml` (Backup: `backups/isabella-core/Cargo.toml.bak_20261109_100200`)
+  - `isabella-core/src/main.rs` (Backup: `backups/isabella-core/main.rs.bak_20261109_100200`)
+  - `scripts/memory/__init__.py` (Backup: `backups/scripts/__init__.py.bak_20261109_100200`)
+  - `scripts/voice_bridge.py` (Backup: `backups/scripts/voice_bridge.py.bak_20261109_100200`)
+  - `scripts/voice_bridge_omnivoice.py` (Backup: `backups/scripts/voice_bridge_omnivoice.py.bak_20261109_100200`)
+  - `iniciar_isabella.bat` (Backup: `backups/root/iniciar_isabella.bat.bak_20261109_100200`)
+  - `iniciar_conversa_omnivoice.bat` (Backup: `backups/root/iniciar_conversa_omnivoice.bat.bak_20261109_100200`)
+  - `install.ps1` (Backup: `backups/root/install.ps1.bak_20261109_101800`)
+  - `README.md` (Backup: `backups/root/README.md.bak_20261109_101800`)
+  - `GEMINI.md` (Backup: `backups/root/GEMINI.md.bak_20261109_101800`)
+  - `CHANGELOG.md` (Backup: `backups/changelogs/CHANGELOG.md.bak_20261109_100200`)
+- **Diagnóstico e Mudanças Cirúrgicas**:
+  1. *Eliminação Total das 3+1 Janelas de Terminal*:
+     - **Antes**: O atalho `"C:\Users\thiag\Desktop\Isabella Companion.lnk"` apontava para `D:\isabella-desktop\iniciar_isabella.bat` (`WindowStyle=1`), que abria `cmd.exe` -> `powershell.exe` -> janelas minimizadas para `coli.cmd` e `llama-server.exe`, além do próprio console de `isabella-core.exe`.
+     - **Adicionado em `isabella-core/src/main.rs`**: `#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]` no topo do binário e flag `WS_EX_TOOLWINDOW` na janela 3DGS, eliminando qualquer janela de console e botão extra na barra de tarefas.
+     - **Adicionado em `isabella-core/src/tray_and_services.rs`**: `BackgroundServices` inicia e supervisiona `Colibri` (porta 8000), `llama-server.exe` (porta 8080) e `voice_bridge` com `.creation_flags(0x08000000)` (`CREATE_NO_WINDOW`), redirecionando stdout/stderr para `logs/` e encerrando toda a árvore de processos com `taskkill /F /T /PID` ao sair.
+     - **Atualizado Atalho do Desktop (`Isabella Companion.lnk`)**: Aponta diretamente para `D:\isabella-desktop\isabella-core\target\release\isabella-core.exe` com ícone `D:\isabella-desktop\assets\isabella_icon.ico,0`.
+  2. *Ícone Nativo na Área de Notificação (`SystemTray`)*:
+     - Implementado via `Shell_NotifyIconW` e `TrackPopupMenu` Win32 em `isabella-core/src/tray_and_services.rs`.
+     - Menu de contexto (clique direito) permite: Mostrar/Ocultar Isabella no Desktop (também via duplo clique no ícone), alternar entre os 4 arquétipos de personalidade em tempo real com reinicialização transparente do daemon de voz, abrir o assistente `IsabellaSetup.exe`, reiniciar serviços de voz, abrir pasta de logs e encerrar a aplicação.
+  3. *Questionário de Personalidade Embutido no Instalador (`IsabellaSetup.exe` — Opção A)*:
+     - Binário nativo em Rust (`src/bin/setup.rs`) com interface gráfica Win32 (`Segoe UI` ClearType) contendo 5 parâmetros configuráveis pelo usuário: Nome preferido, Arquétipo de Personalidade (*Doce & Acolhedora*, *Filosófica & Reflexiva*, *Espirituosa & Provocante*, *Focada & Eficiente*), Ritmo de Resposta, Iniciativa Conversacional e Motor de Voz (*OmniVoice* vs *LiquidCodec*).
+     - Salva `config/personality_profile.json`, inocula o grafo hipocampal (`assets/data/isabella_memory.db`) com 5 triplas raiz e atualiza o atalho da Área de Trabalho.
+  4. *Blindagem de Daemon em `voice_bridge.py` e `voice_bridge_omnivoice.py`*:
+     - Carregamento dinâmico de `USER_NAME`, `SYSTEM_PROMPT`, `SPEECH_SPEED` e `BASE_SMILE_IDLE` a partir de `config/personality_profile.json`.
+     - Tratamento seguro de `msvcrt.kbhit()` e `print(..., flush=True)` com `try/except Exception` e `CREATE_NO_WINDOW` em `ensure_llama_server()`.
+- **Validação Automatizada (CI/CD & TDD)**:
+  - `cargo fmt --check`: OK.
+  - `cargo clippy -- -D warnings`: OK (zero warnings nos binários `isabella-core` e `IsabellaSetup`).
+  - `cargo test`: 2/2 testes unitários Rust aprovados.
+  - `uv run python -m unittest discover -s tests -v`: 9/9 testes unitários e de integração aprovados (`Ran 9 tests in 4.576s — OK`).
+
 ## [2026-11-09 09:22:00] - Instalador Automatizado (1 Clique), Portabilidade Dinâmica e Atualização Integral do README
 - **Branch Ativa**:
   - `master`

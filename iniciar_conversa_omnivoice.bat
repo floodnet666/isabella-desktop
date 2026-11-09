@@ -1,5 +1,4 @@
 @echo off
-title Isabella Desktop - Conversa em Tempo Real (OmniVoice Clone)
-cd /d "D:\isabella-desktop"
-powershell -ExecutionPolicy Bypass -File "D:\isabella-desktop\start_isabella_omnivoice.ps1"
-pause
+cd /d "%~dp0"
+start "" "%~dp0isabella-core\target\release\isabella-core.exe"
+exit /b 0

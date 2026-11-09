@@ -94,6 +94,9 @@ O **Isabella Desktop** é um companion interativo de área de trabalho para Wind
    - **Orquestração Elástica de Contexto**: Janela dinâmica de 2.048 a 8.192 tokens com gating estrito por fronteiras semânticas de diálogo, eliminando degradações de velocidade na GPU.
    - **Consolidação em Sleep-Time**: Processamento em background de diálogos ociosos via `SleepDreamer`, extraindo triplas e sinapses associativas.
    - **Observabilidade**: Trilha de proveniência completa (Path Trace), PRA (100%), SAC (100%), e velocidade sustentada de 146,5 tok/s (pico de 193,0 tok/s).
+7. **Experiência de Consumidor Final: Assistente Nativo de Personalidade (`IsabellaSetup.exe`) e System Tray (Zero Terminais)**:
+   - **Questionário de Personalidade no Instalador (`IsabellaSetup.exe` — Opção A)**: Interface gráfica Win32 nativa em Rust que coleta nome do usuário, arquétipo de personalidade (*Doce & Acolhedora*, *Filosófica & Reflexiva*, *Espirituosa & Provocante*, *Focada & Eficiente*), estilo de resposta, proatividade e motor de voz. Sintetiza `config/personality_profile.json` e inocula o banco HippoRAG 2 (`assets/data/isabella_memory.db`).
+   - **Operação 100% em Segundo Plano (System Tray)**: `isabella-core.exe` compila com `#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]` e `WS_EX_TOOLWINDOW`, registrando ícone nativo na bandeja do sistema (`Shell_NotifyIconW`) com menu de contexto interativo e supervisionando `Colibri`, `llama-server` e `Voice Bridge` via `CREATE_NO_WINDOW` (`0x08000000`) sem abrir nenhuma janela de terminal.
 
 ---
 
